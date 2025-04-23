@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="@color/white"
+    tools:context=".activity.SignInActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stuid"
+        android:textSize="38sp"
+        android:textColor="@color/black"
+        android:layout_marginBottom="38dp"
+        android:textStyle="bold"/>
+
+    <!-- Заголовок -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="АВТОРИЗАЦИЯ"
+        android:textSize="24sp"
+        android:textColor="@color/black"
+        android:layout_marginBottom="24dp"
+        android:textStyle="bold"/>
+
+    <!-- Поле для email -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Почта xx@xx.xx"
+            android:inputType="textEmailAddress"
+            android:importantForAutofill="no"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Поле для пароля -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:passwordToggleEnabled="true">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Пароль"
+            android:inputType="textPassword"
+            android:importantForAutofill="no"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Кнопка входа -->
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginRight="50dp"
+        android:layout_marginLeft="50dp"
+        android:text="Авторизоваться"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/blue"
+        android:layout_marginBottom="16dp"
+        android:textAllCaps="false"/>
+
+    <!-- Divider with "or" text -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginVertical="8dp">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_centerVertical="true"
+            android:background="@android:color/darker_gray"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="или"
+            android:paddingHorizontal="8dp"
+            android:background="@color/white"
+            android:layout_centerInParent="true"
+            android:textColor="@color/black"/>
+    </RelativeLayout>
+
+    <!-- Create account link -->
+    <TextView
+        android:id="@+id/tvCreateAccount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Создать аккаунт"
+        android:textColor="@color/blue"
+        android:layout_marginTop="8dp"
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true"
+        android:paddingBottom="2dp"
+        android:background="@drawable/underline_text_background"
+        />
+
+    <!-- Прогресс бар (скрыт по умолчанию) -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"/>
+
+</LinearLayout>
