@@ -7,25 +7,25 @@
 
     <fragment
         android:id="@+id/profileFragment"
-        android:name="com.yourpackage.fragments.ProfileFragment"
+        android:name="com.example.stuid.fragments.ProfileFragment"
         android:label="Личный кабинет"
         tools:layout="@layout/fragment_profile" />
 
     <fragment
         android:id="@+id/employeesFragment"
-        android:name="com.yourpackage.fragments.EmployeesFragment"
+        android:name="com.example.stuid.fragments.EmployeesFragment"
         android:label="Сотрудники"
         tools:layout="@layout/fragment_employees" />
 
     <fragment
         android:id="@+id/projectsFragment"
-        android:name="com.yourpackage.fragments.ProjectsFragment"
+        android:name="com.example.stuid.fragments.ProjectsFragment"
         android:label="Проекты"
         tools:layout="@layout/fragment_projects" />
 
     <fragment
         android:id="@+id/tasksFragment"
-        android:name="com.yourpackage.fragments.TasksFragment"
+        android:name="com.example.stuid.fragments.TasksFragment"
         android:label="Задачи"
         tools:layout="@layout/fragment_tasks" />
 </navigation>

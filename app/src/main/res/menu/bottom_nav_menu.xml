@@ -3,7 +3,7 @@
     <item
         android:id="@+id/profileFragment"
         android:icon="@drawable/ic_profile"
-        android:title="Личный кабинет" />
+        android:title="Профиль" />
 
     <item
         android:id="@+id/employeesFragment"
