@@ -1,17 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Проекты"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <!-- Здесь будет список проектов -->
+        <!-- Заголовок -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Проекты"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
-</LinearLayout>
+        <!-- Голубая разделительная линия -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/blue"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Контейнер для списка проектов -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvProjects"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+</ScrollView>

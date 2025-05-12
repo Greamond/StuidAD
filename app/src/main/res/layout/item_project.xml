@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_item"
+    android:padding="16dp"
+    android:layout_marginBottom="12dp">
+
+    <!-- Номер проекта -->
+    <TextView
+        android:id="@+id/tvProjectNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="@color/gray"/>
+
+    <!-- Название проекта -->
+    <TextView
+        android:id="@+id/tvProjectName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Создатель проекта -->
+    <TextView
+        android:id="@+id/tvProjectCreator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Кнопка перехода к задачам -->
+    <Button
+        android:id="@+id/btnProjectTasks"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Задачи проекта"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="@color/blue"
+        android:textColor="@color/white"/>
+</LinearLayout>

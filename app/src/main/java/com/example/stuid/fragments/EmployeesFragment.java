@@ -38,12 +38,5 @@ public class EmployeesFragment extends Fragment {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(new EmployeeAdapter(employees));
-
-        // Добавляем разделитель
-        DividerItemDecoration divider = new DividerItemDecoration(
-                recyclerView.getContext(),
-                DividerItemDecoration.VERTICAL
-        );
-        recyclerView.addItemDecoration(divider);
     }
 }
