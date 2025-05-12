@@ -1,5 +1,7 @@
 package com.example.stuid.api;
 
+import android.util.Log;
+
 import com.example.stuid.models.User;
 
 import org.json.JSONArray;
@@ -19,59 +21,70 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class ApiClient {
-    private static final String AUTHURL = "http://10.0.2.2:8081/api/auth/login";
-    private static final String TASKSURL = "http://10.0.2.2:8081/api/task/getNewTasks";
-    private static final String TASKADDSURL = "http://10.0.2.2:8081/api/task/addNewTask";
+    private static final String BASE_URL = "http://10.0.2.2:5000/api/";
+    private static final String LOGIN_URL = BASE_URL + "auth/login";
 
-    public static void loginUser(String login, String password, final AuthCallback callback) {
-        OkHttpClient client = new OkHttpClient();
+    private OkHttpClient client;
+    private String authToken; // Для хранения JWT токена, если будете использовать
 
-        // Создаем JSON-тело запроса
+    public ApiClient() {
+        this.client = new OkHttpClient();
+    }
+
+    public void loginUser(String email, String password, final AuthCallback callback) {
+        // Создаем JSON тело запроса
         JSONObject jsonBody = new JSONObject();
         try {
-            jsonBody.put("login", login);
-            jsonBody.put("password", password);
-        } catch (Exception e) {
-            e.printStackTrace();
+            jsonBody.put("Email", email);
+            jsonBody.put("Password", password);
+        } catch (JSONException e) {
+            callback.onFailure("Error creating request: " + e.getMessage());
+            return;
         }
 
-        // Формируем запрос
         RequestBody requestBody = RequestBody.create(
                 jsonBody.toString(),
                 MediaType.parse("application/json")
         );
 
+        Log.d("Request", "URL: " + LOGIN_URL);
+        Log.d("Request", "Body: " + jsonBody.toString());
+
         Request request = new Request.Builder()
-                .url(AUTHURL)
+                .url(LOGIN_URL)
                 .post(requestBody)
+                .addHeader("Content-Type", "application/json")
                 .build();
 
-        // Отправляем запрос асинхронно
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                callback.onFailure(e.getMessage());
+                Log.e("NetworkError", "Error: " + e.getMessage());
+                callback.onFailure("Network error: " + e.getMessage());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "empty body";
+                    Log.e("ServerError", "Code: " + response.code() + ", Body: " + errorBody);
+                    callback.onFailure("Server error: " + response.code() + ", " + errorBody);
+                    return;
+                }
+
+                try {
                     String responseData = response.body().string();
-                    try {
-                        callback.onSuccess(responseData, parseUserRole(responseData));
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                } else {
-                    callback.onFailure("Ошибка: " + response.code());
+                    JSONObject json = new JSONObject(responseData);
+
+                    User user = new User();
+                    user.setId(json.getInt("UserId"));
+                    user.setEmail(json.getString("Email"));
+
+                    callback.onSuccess(user);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
                 }
             }
         });
-    }
-
-    private static User parseUserRole(String json) throws JSONException {
-        JSONObject jsonTask = new JSONObject(json);
-        User user = new User();
-        return user;
     }
 }
