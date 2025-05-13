@@ -1,8 +1,8 @@
 package com.example.stuid.api;
 
-import com.example.stuid.models.User;
+import com.example.stuid.models.Employee;
 
 public interface AuthCallback {
-    void onSuccess(User user);
+    void onSuccess(Employee employee);
     void onFailure(String error);
 }

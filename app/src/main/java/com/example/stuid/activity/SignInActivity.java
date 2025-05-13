@@ -3,7 +3,6 @@ package com.example.stuid.activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -14,8 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.AuthCallback;
-import com.example.stuid.classes.Alert;
-import com.example.stuid.models.User;
+import com.example.stuid.models.Employee;
 
 public class SignInActivity extends AppCompatActivity {
     private ApiClient apiClient;
@@ -37,10 +35,10 @@ public class SignInActivity extends AppCompatActivity {
 
             apiClient.loginUser(email, password, new AuthCallback() {
                 @Override
-                public void onSuccess(User user) {
+                public void onSuccess(Employee employee) {
                     runOnUiThread(() -> {
                         // Сохраняем данные пользователя
-                        saveUserData(user);
+                        saveUserData(email, password, employee);
 
                         // Переходим на главный экран
                         Intent intent = new Intent(SignInActivity.this, MainActivity.class);
@@ -59,11 +57,17 @@ public class SignInActivity extends AppCompatActivity {
         });
     }
 
-    private void saveUserData(User user) {
+    private void saveUserData(String email, String password, Employee employee) {
         SharedPreferences prefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("user_id", user.getId());
-        editor.putString("user_email", user.getEmail());
+        editor.putString("user_email", email);
+        editor.putString("user_password", password);
+
+        // Сохраняем данные employee (пример для простых полей)
+        editor.putString("employee_fullName", employee.getFullName());
+        editor.putString("employee_email", employee.getEmail());
+        editor.putString("employee_description", employee.getDescription());
+
         editor.apply();
     }
 }

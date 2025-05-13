@@ -1,18 +1,61 @@
 package com.example.stuid.models;
 
 public class Employee {
-    private String fullName;
-    private String email;
-    private String about;
+    private int EmployeeId;
+    private String LastName;
+    private String FirstName;
+    private String MiddleName;
+    private String Email;
+    private String Description;
 
-    public Employee(String fullName, String email, String about) {
-        this.fullName = fullName;
-        this.email = email;
-        this.about = about;
+    public Employee() {
     }
 
-    // Геттеры
-    public String getFullName() { return fullName; }
-    public String getEmail() { return email; }
-    public String getAbout() { return about; }
+    public Employee(String lastName, String firstName, String middleName, String email, String description) {
+        LastName = lastName;
+        FirstName = firstName;
+        MiddleName = middleName;
+        Email = email;
+        Description = description;
+    }
+
+    public int getEmployeeId() {
+        return EmployeeId;
+    }
+
+    public String getFullName() {
+        return LastName + " " + FirstName + " " + MiddleName;
+    }
+
+    public String getEmail() {
+        return Email;
+    }
+
+    public String getDescription() {
+        return Description;
+    }
+
+    public void setEmployeeId(int employeeId) {
+        EmployeeId = employeeId;
+    }
+
+    public void setLastName(String lastName) {
+        LastName = lastName;
+    }
+
+    public void setFirstName(String firstName) {
+        FirstName = firstName;
+    }
+
+    public void setMiddleName(String middleName) {
+        MiddleName = middleName;
+    }
+
+    public void setEmail(String email) {
+        Email = email;
+    }
+
+    public void setDescription(String description) {
+        Description = description;
+    }
 }

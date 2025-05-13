@@ -2,15 +2,12 @@ package com.example.stuid.api;
 
 import android.util.Log;
 
-import com.example.stuid.models.User;
+import com.example.stuid.models.Employee;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -76,11 +73,15 @@ public class ApiClient {
                     String responseData = response.body().string();
                     JSONObject json = new JSONObject(responseData);
 
-                    User user = new User();
-                    user.setId(json.getInt("UserId"));
-                    user.setEmail(json.getString("Email"));
+                    Employee employee = new Employee();
+                    employee.setEmployeeId(json.getInt("EmployeeId"));
+                    employee.setLastName(json.getString("LastName"));
+                    employee.setFirstName(json.getString("FirstName"));
+                    employee.setMiddleName(json.getString("MiddleName"));
+                    employee.setEmail(json.getString("Email"));
+                    employee.setDescription(json.getString("Description"));
 
-                    callback.onSuccess(user);
+                    callback.onSuccess(employee);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }

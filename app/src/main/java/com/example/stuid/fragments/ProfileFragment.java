@@ -1,5 +1,8 @@
 package com.example.stuid.fragments;
 
+import static android.content.Context.MODE_PRIVATE;
+
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,13 +23,19 @@ public class ProfileFragment extends Fragment {
 
         TextView tvFullName = view.findViewById(R.id.tvFullName);
         TextView tvEmail = view.findViewById(R.id.tvEmail);
-        TextView tvAbout = view.findViewById(R.id.tvAbout);
+        TextView tvAbout = view.findViewById(R.id.tvDescription);
         Button btnEdit = view.findViewById(R.id.btnEditProfile);
 
         // Здесь можно установить данные из ViewModel или SharedPreferences
-        tvFullName.setText("Петров Алексей Сергеевич");
-        tvEmail.setText("alexey.petrov@example.com");
-        tvAbout.setText("Full-stack разработчик с 5-летним опытом. Специализация: мобильные приложения и веб-разработка.");
+        SharedPreferences prefs = requireContext().getSharedPreferences("user_prefs", MODE_PRIVATE);
+
+        String fullName = prefs.getString("employee_fullName", "");
+        String email = prefs.getString("employee_email", "");
+        String description = prefs.getString("employee_description", "");
+
+        tvFullName.setText(fullName);
+        tvEmail.setText(email);
+        tvAbout.setText(description);
 
         btnEdit.setOnClickListener(v -> {
             // Логика перехода к редактированию профиля

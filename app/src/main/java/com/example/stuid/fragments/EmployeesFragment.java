@@ -33,8 +33,8 @@ public class EmployeesFragment extends Fragment {
     private void setupRecyclerView() {
         // Тестовые данные
         List<Employee> employees = new ArrayList<>();
-        employees.add(new Employee("Иванов Иван", "ivanov@edu.ru", "Android разработчик"));
-        employees.add(new Employee("Петрова Анна", "petrova@edu.ru", "Дизайнер интерфейсов"));
+        employees.add(new Employee("Иванов", "Иван", "Иваныч", "ivanov@edu.ru", "Android разработчик"));
+        employees.add(new Employee("Петрова", "Анна", "Фёдоровна", "petrova@edu.ru", "Дизайнер интерфейсов"));
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(new EmployeeAdapter(employees));

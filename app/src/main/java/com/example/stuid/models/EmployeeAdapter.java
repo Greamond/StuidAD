@@ -15,13 +15,13 @@ public class EmployeeAdapter extends RecyclerView.Adapter<EmployeeAdapter.ViewHo
     private List<Employee> employees;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView tvName, tvEmail, tvAbout;
+        public TextView tvName, tvEmail, tvDescription;
 
         public ViewHolder(View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tvEmployeeName);
             tvEmail = itemView.findViewById(R.id.tvEmployeeEmail);
-            tvAbout = itemView.findViewById(R.id.tvEmployeeAbout);
+            tvDescription = itemView.findViewById(R.id.tvEmployeeDescription);
         }
     }
 
@@ -41,7 +41,7 @@ public class EmployeeAdapter extends RecyclerView.Adapter<EmployeeAdapter.ViewHo
         Employee employee = employees.get(position);
         holder.tvName.setText(employee.getFullName());
         holder.tvEmail.setText(employee.getEmail());
-        holder.tvAbout.setText(employee.getAbout());
+        holder.tvDescription.setText(employee.getDescription());
     }
 
     @Override
