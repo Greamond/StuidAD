@@ -48,7 +48,7 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         Project project = projects.get(position);
-        holder.tvNumber.setText("Проект #" + project.getNumber());
+        holder.tvNumber.setText("Проект #" + project.getId());
         holder.tvName.setText(project.getName());
         holder.tvCreator.setText("Создатель: " + project.getCreator());
 
@@ -62,5 +62,15 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
     @Override
     public int getItemCount() {
         return projects.size();
+    }
+
+    public List<Project> getProjects() {
+        return projects;
+    }
+
+    public void updateProjects(List<Project> newProjects) {
+        projects.clear();
+        projects.addAll(newProjects);
+        notifyDataSetChanged();
     }
 }

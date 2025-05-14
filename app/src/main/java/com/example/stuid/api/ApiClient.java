@@ -3,6 +3,7 @@ package com.example.stuid.api;
 import android.util.Log;
 
 import com.example.stuid.models.Employee;
+import com.example.stuid.models.Project;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -175,6 +176,11 @@ public class ApiClient {
     }
 
     public void getEmployees(String authToken, final EmployeesCallback callback) {
+        if (authToken == null || authToken.isEmpty()) {
+            callback.onFailure("Authorization token is missing");
+            return;
+        }
+
         String EMPLOYEES_URL = BASE_URL + "Users/employees";
 
         Request request = new Request.Builder()
@@ -217,6 +223,60 @@ public class ApiClient {
                         employees.add(employee);
                     }
                     callback.onSuccess(employees);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void getProjects(String authToken, final ProjectsCallback callback) {
+        if (authToken == null || authToken.isEmpty()) {
+            callback.onFailure("Authorization token is missing");
+            return;
+        }
+
+        String PROJECTS_URL = BASE_URL + "Projects";
+
+        Request request = new Request.Builder()
+                .url(PROJECTS_URL)
+                .addHeader("Authorization", "Bearer " + authToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.code() == 401) {
+                    callback.onFailure("Session expired. Please login again");
+                    return;
+                }
+
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Project> projects = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        projects.add(new Project(
+                                json.getInt("Id"),
+                                json.getString("Name"),
+                                json.getString("Description"),
+                                json.getBoolean("IsPublic"),
+                                json.getString("Creator")
+                        ));
+                    }
+                    callback.onSuccess(projects);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }

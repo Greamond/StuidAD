@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.stuid.R;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class EmployeeAdapter extends RecyclerView.Adapter<EmployeeAdapter.ViewHolder> {
@@ -47,5 +48,10 @@ public class EmployeeAdapter extends RecyclerView.Adapter<EmployeeAdapter.ViewHo
     @Override
     public int getItemCount() {
         return employees.size();
+    }
+
+    public void updateEmployees(List<Employee> newEmployees) {
+        this.employees = new ArrayList<>(newEmployees);
+        notifyDataSetChanged();
     }
 }

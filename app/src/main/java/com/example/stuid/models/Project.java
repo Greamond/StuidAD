@@ -1,18 +1,60 @@
 package com.example.stuid.models;
 
 public class Project {
-    private String number;
-    private String name;
-    private String creator;
+    private int Id;
+    private String Name;
+    private String Description;
+    private boolean IsPublic;
+    private String Creator;
 
-    public Project(String number, String name, String creator) {
-        this.number = number;
-        this.name = name;
-        this.creator = creator;
+    public Project() {
     }
 
-    // Геттеры
-    public String getNumber() { return number; }
-    public String getName() { return name; }
-    public String getCreator() { return creator; }
+    public Project(int id, String name, String description, boolean isPublic, String creator) {
+        Id = id;
+        Name = name;
+        Description = description;
+        IsPublic = isPublic;
+        Creator = creator;
+    }
+
+    public int getId() {
+        return Id;
+    }
+
+    public void setId(int id) {
+        Id = id;
+    }
+
+    public String getName() {
+        return Name;
+    }
+
+    public void setName(String name) {
+        Name = name;
+    }
+
+    public String getDescription() {
+        return Description;
+    }
+
+    public void setDescription(String description) {
+        Description = description;
+    }
+
+    public boolean isPublic() {
+        return IsPublic;
+    }
+
+    public void setPublic(boolean aPublic) {
+        IsPublic = aPublic;
+    }
+
+    public String getCreator() {
+        return Creator;
+    }
+
+    public void setCreator(String creator) {
+        Creator = creator;
+    }
 }
