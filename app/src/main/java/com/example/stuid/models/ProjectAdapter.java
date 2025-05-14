@@ -73,4 +73,11 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
         projects.addAll(newProjects);
         notifyDataSetChanged();
     }
+
+    public void addProject(Project project) {
+        // Вставляем в начало списка
+        projects.add(0, project);
+        // Уведомляем адаптер о вставке в позицию 0
+        notifyItemInserted(0);
+    }
 }

@@ -66,6 +66,7 @@ public class SignInActivity extends AppCompatActivity {
         editor.putString("user_password", password);
 
         // Сохраняем данные employee (пример для простых полей)
+        editor.putInt("employee_id", employee.getEmployeeId());
         editor.putString("employee_fullName", employee.getFullName());
         editor.putString("employee_email", employee.getEmail());
         editor.putString("employee_description", employee.getDescription());

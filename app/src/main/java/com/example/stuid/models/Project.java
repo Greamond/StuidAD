@@ -5,12 +5,12 @@ public class Project {
     private String Name;
     private String Description;
     private boolean IsPublic;
-    private String Creator;
+    private int Creator;
 
     public Project() {
     }
 
-    public Project(int id, String name, String description, boolean isPublic, String creator) {
+    public Project(int id, String name, String description, boolean isPublic, int creator) {
         Id = id;
         Name = name;
         Description = description;
@@ -50,11 +50,11 @@ public class Project {
         IsPublic = aPublic;
     }
 
-    public String getCreator() {
+    public int getCreator() {
         return Creator;
     }
 
-    public void setCreator(String creator) {
+    public void setCreator(int creator) {
         Creator = creator;
     }
 }

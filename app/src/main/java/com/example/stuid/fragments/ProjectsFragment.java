@@ -7,9 +7,14 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,6 +23,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.stuid.R;
 import com.example.stuid.activity.SignInActivity;
 import com.example.stuid.api.ApiClient;
+import com.example.stuid.api.ProjectCreateCallback;
 import com.example.stuid.api.ProjectsCallback;
 import com.example.stuid.models.Project;
 import com.example.stuid.models.ProjectAdapter;
@@ -32,6 +38,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     private ProgressBar progressBar;
     private SwipeRefreshLayout swipeRefresh;
     private ProjectAdapter adapter;
+    private ImageButton btnAdd;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -42,6 +49,9 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
         recyclerView = view.findViewById(R.id.rvProjects);
+
+        btnAdd = view.findViewById(R.id.btnAdd);
+        btnAdd.setOnClickListener(v -> {showAddProjectDialog();});
 
         // Настройка адаптера
         adapter = new ProjectAdapter(new ArrayList<>(), this);
@@ -93,6 +103,76 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                         if (error.contains("expired")) {
                             redirectToLogin();
                         }
+                    }
+                });
+            }
+        });
+    }
+
+    private void showAddProjectDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Новый проект");
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_add_project, null);
+        builder.setView(dialogView);
+
+        EditText etName = dialogView.findViewById(R.id.etProjectName);
+        EditText etDescription = dialogView.findViewById(R.id.etProjectDescription);
+        CheckBox cbIsPublic = dialogView.findViewById(R.id.cbIsPublic);
+
+        builder.setPositiveButton("Создать", (dialog, which) -> {
+            String name = etName.getText().toString();
+            String description = etDescription.getText().toString();
+            boolean isPublic = cbIsPublic.isChecked();
+
+            if (!name.isEmpty()) {
+                createNewProject(name, description, isPublic);
+            } else {
+                Toast.makeText(requireContext(),
+                        "Введите название проекта", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNegativeButton("Отмена", null);
+        builder.show();
+    }
+
+    private void createNewProject(String name, String description, boolean isPublic) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            redirectToLogin();
+            return;
+        }
+
+        // Создаем проект без указания Creator (сервер добавит сам)
+        Project newProject = new Project(0, name, description, isPublic, 0);
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.createProject(token, newProject, new ProjectCreateCallback() {
+            @Override
+            public void onSuccess(Project createdProject) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(),
+                            "Проект '" + createdProject.getName() + "' создан",
+                            Toast.LENGTH_SHORT).show();
+
+                    // Добавляем проект в список
+                    adapter.addProject(createdProject);
+                    recyclerView.smoothScrollToPosition(0);
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    showError("Ошибка создания проекта: " + error);
+
+                    // Для ошибок авторизации перенаправляем на логин
+                    if (error.contains("401") || error.contains("Unauthorized")) {
+                        redirectToLogin();
                     }
                 });
             }

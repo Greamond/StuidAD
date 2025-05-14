@@ -273,7 +273,7 @@ public class ApiClient {
                                 json.getString("Name"),
                                 json.getString("Description"),
                                 json.getBoolean("IsPublic"),
-                                json.getString("Creator")
+                                json.getInt("Creator")
                         ));
                     }
                     callback.onSuccess(projects);
@@ -282,5 +282,64 @@ public class ApiClient {
                 }
             }
         });
+    }
+
+    public void createProject(String token, Project project, final ProjectCreateCallback callback) {
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("Name", project.getName());
+            jsonBody.put("Description", project.getDescription());
+            jsonBody.put("IsPublic", project.isPublic());
+            // Creator теперь не отправляем, сервер берет из токена
+
+            RequestBody requestBody = RequestBody.create(
+                    jsonBody.toString(),
+                    MediaType.parse("application/json")
+            );
+
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Projects/createProject")
+                    .post(requestBody)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure("Network error: " + e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    try {
+                        if (!response.isSuccessful()) {
+                            String errorBody = response.body() != null ?
+                                    response.body().string() : "empty body";
+                            callback.onFailure("Server error: " + response.code() + ": " + errorBody);
+                            return;
+                        }
+
+                        // Получаем созданный проект из ответа
+                        String responseData = response.body().string();
+                        JSONObject json = new JSONObject(responseData);
+
+                        Project createdProject = new Project(
+                                json.getInt("Id"),
+                                json.getString("Name"),
+                                json.getString("Description"),
+                                json.getBoolean("IsPublic"),
+                                json.getInt("Creator")
+                        );
+
+                        callback.onSuccess(createdProject);
+                    } catch (Exception e) {
+                        callback.onFailure("Error parsing response: " + e.getMessage());
+                    }
+                }
+            });
+        } catch (JSONException e) {
+            callback.onFailure("Error creating request: " + e.getMessage());
+        }
     }
 }
