@@ -4,10 +4,13 @@ import android.util.Log;
 
 import com.example.stuid.models.Employee;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -164,6 +167,56 @@ public class ApiClient {
                     employee.setDescription(json.getString("Description"));
 
                     callback.onSuccess(employee, token);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void getEmployees(String authToken, final EmployeesCallback callback) {
+        String EMPLOYEES_URL = BASE_URL + "Users/employees";
+
+        Request request = new Request.Builder()
+                .url(EMPLOYEES_URL)
+                .addHeader("Authorization", "Bearer " + authToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.code() == 401) {
+                    callback.onFailure("Unauthorized - please login again");
+                    return;
+                }
+
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Employee> employees = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        Employee employee = new Employee();
+                        employee.setEmployeeId(json.getInt("EmployeeId"));
+                        employee.setLastName(json.getString("LastName"));
+                        employee.setFirstName(json.getString("FirstName"));
+                        employee.setMiddleName(json.getString("MiddleName"));
+                        employee.setEmail(json.getString("Email"));
+                        employee.setDescription(json.getString("Description"));
+                        employees.add(employee);
+                    }
+                    callback.onSuccess(employees);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }
