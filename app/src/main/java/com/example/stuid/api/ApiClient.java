@@ -342,4 +342,60 @@ public class ApiClient {
             callback.onFailure("Error creating request: " + e.getMessage());
         }
     }
+
+    public void updateProfile(int employeeId, String lastName, String firstName, String middleName,
+                              String description, String token, final ProfileUpdateCallback callback) {
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("LastName", lastName);
+            jsonBody.put("FirstName", firstName);
+
+            // Необязательные поля
+            if (middleName != null) jsonBody.put("MiddleName", middleName);
+            if (description != null) jsonBody.put("Description", description);
+
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Users/" + employeeId)
+                    .put(RequestBody.create(jsonBody.toString(), MediaType.get("application/json")))
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure("Network error: " + e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    String responseBody = response.body() != null ? response.body().string() : "{}";
+                    Log.d("API_RESPONSE", "Response: " + responseBody);
+
+                    try {
+                        JSONObject json = new JSONObject(responseBody);
+
+                        if (response.isSuccessful()) {
+                            // Проверяем наличие поля success
+                            if (json.has("success") && json.getBoolean("success")) {
+                                callback.onSuccess();
+                            } else {
+                                String errorMsg = json.optString("message", "Update failed");
+                                callback.onFailure(errorMsg);
+                            }
+                        } else {
+                            // Обработка ошибок сервера
+                            String errorMsg = json.optString("error",
+                                    "Server error: " + response.code());
+                            callback.onFailure(errorMsg);
+                        }
+                    } catch (JSONException e) {
+                        callback.onFailure("Invalid server response format");
+                    }
+                }
+            });
+        } catch (JSONException e) {
+            callback.onFailure("Error creating request: " + e.getMessage());
+        }
+    }
 }
