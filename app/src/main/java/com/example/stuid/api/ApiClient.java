@@ -398,4 +398,79 @@ public class ApiClient {
             callback.onFailure("Error creating request: " + e.getMessage());
         }
     }
+
+    public void uploadProfilePhoto(int employeeId, String base64Image, String token,
+                                   final ProfilePhotoCallback callback) {
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("Photo", base64Image);
+
+            RequestBody requestBody = RequestBody.create(
+                    jsonBody.toString(),
+                    MediaType.parse("application/json")
+            );
+
+            String UPLOAD_PHOTO_URL = BASE_URL + "Users/" + employeeId + "/photo";
+            Log.d("API Request", "Uploading photo to: " + UPLOAD_PHOTO_URL);
+
+            Request request = new Request.Builder()
+                    .url(UPLOAD_PHOTO_URL)
+                    .put(requestBody)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure("Network error: " + e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    String responseData = response.body() != null ? response.body().string() : "";
+                    if (!response.isSuccessful()) {
+                        callback.onFailure("Server error: " + response.code());
+                        return;
+                    }
+                    callback.onSuccess();
+                }
+            });
+        } catch (JSONException e) {
+            callback.onFailure("Error creating request");
+        }
+    }
+
+    public void getProfilePhoto(int employeeId, String token, final ProfilePhotoDownloadCallback callback) {
+        String GET_PHOTO_URL = BASE_URL + "Users/" + employeeId + "/photo";
+
+        Request request = new Request.Builder()
+                .url(GET_PHOTO_URL)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    String base64Image = json.getString("photo");
+                    callback.onSuccess(base64Image);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response");
+                }
+            }
+        });
+    }
 }

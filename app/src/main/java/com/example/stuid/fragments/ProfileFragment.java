@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +25,8 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
+import com.example.stuid.api.ProfilePhotoCallback;
+import com.example.stuid.api.ProfilePhotoDownloadCallback;
 import com.example.stuid.api.ProfileUpdateCallback;
 import com.example.stuid.classes.FileUtil;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -33,6 +36,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 
 public class ProfileFragment extends Fragment {
     private static final int PICK_IMAGE_REQUEST = 1;
@@ -84,13 +88,61 @@ public class ProfileFragment extends Fragment {
     }
 
     private void loadProfileImage() {
-        String imagePath = prefs.getString("profile_image", null);
-        if (imagePath != null) {
-            Glide.with(this)
-                    .load(new File(imagePath))
-                    .circleCrop()
-                    .into(ivPhoto);
+        int employeeId = prefs.getInt("employee_id", 0);
+        String token = prefs.getString("jwt_token", "");
+        String localImagePath = prefs.getString("profile_image", null);
+
+        // Сначала пробуем загрузить локальное изображение
+        if (localImagePath != null) {
+            File imageFile = new File(localImagePath);
+            if (imageFile.exists()) {
+                Glide.with(this)
+                        .load(imageFile)
+                        .circleCrop()
+                        .into(ivPhoto);
+                return;
+            }
         }
+
+        // Если локального нет, загружаем с сервера
+        apiClient.getProfilePhoto(employeeId, token, new ProfilePhotoDownloadCallback() {
+            @Override
+            public void onSuccess(String base64Image) {
+                requireActivity().runOnUiThread(() -> {
+                    try {
+                        byte[] imageData = Base64.decode(base64Image, Base64.DEFAULT);
+
+                        // Сохраняем локально
+                        File storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                        File imageFile = File.createTempFile("profile_", ".jpg", storageDir);
+                        FileOutputStream fos = new FileOutputStream(imageFile);
+                        fos.write(imageData);
+                        fos.close();
+
+                        // Обновляем SharedPreferences
+                        editor.putString("profile_image", imageFile.getAbsolutePath());
+                        editor.apply();
+
+                        // Показываем изображение
+                        Glide.with(ProfileFragment.this)
+                                .load(imageFile)
+                                .circleCrop()
+                                .into(ivPhoto);
+                    } catch (IOException e) {
+                        Toast.makeText(requireContext(),
+                                "Ошибка сохранения фото", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                // Можно показать заглушку
+                requireActivity().runOnUiThread(() -> {
+                    ivPhoto.setImageResource(R.drawable.ic_profile);
+                });
+            }
+        });
     }
 
     private void showEditProfileDialog() {
@@ -215,6 +267,7 @@ public class ProfileFragment extends Fragment {
 
         new Thread(() -> {
             try {
+                // 1. Сохраняем изображение локально
                 File storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
                 File imageFile = File.createTempFile("profile_", ".jpg", storageDir);
 
@@ -222,24 +275,48 @@ public class ProfileFragment extends Fragment {
                 OutputStream out = new FileOutputStream(imageFile);
                 FileUtil.copy(in, out);
 
-                // Сохраняем путь к изображению
-                editor.putString("profile_image", imageFile.getAbsolutePath());
-                editor.apply();
+                // 2. Конвертируем в Base64 для отправки на сервер
+                byte[] imageData = Files.readAllBytes(imageFile.toPath());
+                String base64Image = Base64.encodeToString(imageData, Base64.DEFAULT);
 
-                requireActivity().runOnUiThread(() -> {
-                    progressDialog.dismiss();
-                    Glide.with(this)
-                            .load(imageFile)
-                            .circleCrop()
-                            .into(ivPhoto);
-                    Toast.makeText(requireContext(),
-                            "Фото профиля обновлено", Toast.LENGTH_SHORT).show();
+                // 3. Отправляем на сервер
+                int employeeId = prefs.getInt("employee_id", 0);
+                String token = prefs.getString("jwt_token", "");
+
+                apiClient.uploadProfilePhoto(employeeId, base64Image, token, new ProfilePhotoCallback() {
+                    @Override
+                    public void onSuccess() {
+                        requireActivity().runOnUiThread(() -> {
+                            // 4. Сохраняем локальный путь только после успешной загрузки на сервер
+                            editor.putString("profile_image", imageFile.getAbsolutePath());
+                            editor.apply();
+
+                            progressDialog.dismiss();
+                            Glide.with(ProfileFragment.this)
+                                    .load(imageFile)
+                                    .circleCrop()
+                                    .into(ivPhoto);
+
+                            Toast.makeText(requireContext(),
+                                    "Фото профиля обновлено", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(String error) {
+                        requireActivity().runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            Toast.makeText(requireContext(),
+                                    "Ошибка загрузки фото: " + error, Toast.LENGTH_LONG).show();
+                        });
+                    }
                 });
+
             } catch (IOException e) {
                 requireActivity().runOnUiThread(() -> {
                     progressDialog.dismiss();
                     Toast.makeText(requireContext(),
-                            "Ошибка сохранения изображения", Toast.LENGTH_SHORT).show();
+                            "Ошибка обработки изображения", Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();
