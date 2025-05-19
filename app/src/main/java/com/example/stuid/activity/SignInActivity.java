@@ -39,7 +39,7 @@ public class SignInActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         // Сохраняем данные пользователя
                         apiClient.setAuthToken(token);
-                        saveUserData(email, password, employee, token);
+                        saveUserData(employee, token);
 
                         // Переходим на главный экран
                         Intent intent = new Intent(SignInActivity.this, MainActivity.class);
@@ -58,12 +58,10 @@ public class SignInActivity extends AppCompatActivity {
         });
     }
 
-    private void saveUserData(String email, String password, Employee employee, String token) {
+    private void saveUserData(Employee employee, String token) {
         SharedPreferences prefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString("jwt_token", token);
-        editor.putString("user_email", email);
-        editor.putString("user_password", password);
 
         // Сохраняем данные employee (пример для простых полей)
         editor.putInt("employee_id", employee.getEmployeeId());

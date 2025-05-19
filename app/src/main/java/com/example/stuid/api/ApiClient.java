@@ -1,5 +1,8 @@
 package com.example.stuid.api;
 
+import static com.example.stuid.classes.PasswordHasher.generateSalt;
+import static com.example.stuid.classes.PasswordHasher.hashPassword;
+
 import android.util.Log;
 
 import com.example.stuid.models.Employee;
@@ -42,11 +45,13 @@ public class ApiClient {
     }
 
     public void loginUser(String email, String password, final AuthCallback callback) {
+        String hashedPassword = hashPassword(password);
+
         // Создаем JSON тело запроса
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("Email", email);
-            jsonBody.put("Password", password);
+            jsonBody.put("Password", hashedPassword);
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
             return;
@@ -109,13 +114,15 @@ public class ApiClient {
     public void registerUser(String firstName, String lastName, String middleName,
                              String email, String password,
                              final AuthCallback callback) {
+        String hashedPassword = hashPassword(password);
+
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("FirstName", firstName);
             jsonBody.put("LastName", lastName);
             jsonBody.put("MiddleName", middleName);
             jsonBody.put("Email", email);
-            jsonBody.put("Password", password);
+            jsonBody.put("Password", hashedPassword);
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
             return;
@@ -220,6 +227,7 @@ public class ApiClient {
                         employee.setMiddleName(json.getString("MiddleName"));
                         employee.setEmail(json.getString("Email"));
                         employee.setDescription(json.getString("Description"));
+                        employee.setPhoto(json.getString("Photo"));
                         employees.add(employee);
                     }
                     callback.onSuccess(employees);

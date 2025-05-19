@@ -47,7 +47,7 @@ public class EmployeesFragment extends Fragment {
 
         // Настройка RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new EmployeeAdapter(new ArrayList<>());
+        adapter = new EmployeeAdapter(new ArrayList<>(), requireContext());
         recyclerView.setAdapter(adapter);
 
         // Настройка SwipeRefresh

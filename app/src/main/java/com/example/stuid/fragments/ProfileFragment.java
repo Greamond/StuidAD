@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.example.stuid.R;
+import com.example.stuid.activity.SignInActivity;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.ProfilePhotoCallback;
 import com.example.stuid.api.ProfilePhotoDownloadCallback;
@@ -59,6 +60,9 @@ public class ProfileFragment extends Fragment {
         TextView tvAbout = view.findViewById(R.id.tvDescription);
         Button btnEdit = view.findViewById(R.id.btnEditProfile);
 
+        Button btnLogout = view.findViewById(R.id.btnLogout);
+        btnLogout.setOnClickListener(v -> showLogoutConfirmationDialog());
+
         // Инициализация API клиента
         apiClient = new ApiClient();
 
@@ -75,6 +79,29 @@ public class ProfileFragment extends Fragment {
         btnEdit.setOnClickListener(v -> showEditProfileDialog());
 
         return view;
+    }
+
+    private void showLogoutConfirmationDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Выход из аккаунта")
+                .setMessage("Вы уверены, что хотите выйти?")
+                .setPositiveButton("Выйти", (dialog, which) -> logoutUser())
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void logoutUser() {
+        // Анимация при выходе
+        requireActivity().overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+
+        // Очистка данных
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.clear();
+        editor.apply();
+
+        // Переход на экран входа
+        startActivity(new Intent(requireActivity(), SignInActivity.class));
+        requireActivity().finishAffinity(); // Закрывает все активности
     }
 
     private void loadProfileData(TextView... textViews) {

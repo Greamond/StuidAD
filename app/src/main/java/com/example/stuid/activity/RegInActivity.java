@@ -55,7 +55,7 @@ public class RegInActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         // Save user data
                         apiClient.setAuthToken(token);
-                        saveUserData(email, password, employee, token);
+                        saveUserData(employee, token);
 
                         // Go to main activity
                         Intent intent = new Intent(RegInActivity.this, MainActivity.class);
@@ -74,14 +74,13 @@ public class RegInActivity extends AppCompatActivity {
         });
     }
 
-    private void saveUserData(String email, String password, Employee employee, String token) {
+    private void saveUserData(Employee employee, String token) {
         SharedPreferences prefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString("jwt_token", token);
-        editor.putString("user_email", email);
-        editor.putString("user_password", password);
 
         // Save employee data
+        editor.putInt("employee_id", employee.getEmployeeId());
         editor.putString("employee_fullName", employee.getFullName());
         editor.putString("employee_email", employee.getEmail());
         editor.putString("employee_description", employee.getDescription());

@@ -7,6 +7,7 @@ public class Employee {
     private String MiddleName;
     private String Email;
     private String Description;
+    private String Photo;
 
     public Employee() {
     }
@@ -35,6 +36,8 @@ public class Employee {
         return Description;
     }
 
+    public String getPhoto() { return Photo; }
+
     public void setEmployeeId(int employeeId) {
         EmployeeId = employeeId;
     }
@@ -58,4 +61,6 @@ public class Employee {
     public void setDescription(String description) {
         Description = description;
     }
+
+    public void setPhoto(String photo) { Photo = photo; }
 }
