@@ -481,4 +481,50 @@ public class ApiClient {
             }
         });
     }
+
+    public void addParticipants(String token, int projectId, List<Integer> participantIds, ParticipantsCallback callback) {
+        try {
+            JSONObject jsonBody = new JSONObject();
+            JSONArray participantsArray = new JSONArray();
+
+            for (Integer participantId : participantIds) {
+                participantsArray.put(participantId);
+            }
+
+            jsonBody.put("ProjectId", projectId);
+            jsonBody.put("ParticipantIds", participantsArray);
+
+            RequestBody requestBody = RequestBody.create(
+                    jsonBody.toString(),
+                    MediaType.parse("application/json")
+            );
+
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Participants/addParticipants")
+                    .post(requestBody)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure("Network error: " + e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (!response.isSuccessful()) {
+                        String errorBody = response.body() != null ?
+                                response.body().string() : "empty body";
+                        callback.onFailure("Server error: " + response.code() + ": " + errorBody);
+                        return;
+                    }
+                    callback.onSuccess();
+                }
+            });
+        } catch (JSONException e) {
+            callback.onFailure("Error creating request: " + e.getMessage());
+        }
+    }
 }

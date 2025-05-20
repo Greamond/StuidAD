@@ -27,4 +27,34 @@
         android:layout_marginTop="8dp"
         android:text="Публичный проект"/>
 
+    <!-- Добавляем поле поиска участников -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+
+        <AutoCompleteTextView
+            android:id="@+id/actvEmployeeSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Добавить участника"
+            android:inputType="text"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Список выбранных участников -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Участники:"
+        android:textStyle="bold"/>
+
+    <LinearLayout
+        android:id="@+id/llSelectedEmployees"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"/>
+
 </LinearLayout>
