@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Название проекта (аналог EditText из add) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/tvProjectName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Название проекта"
+            android:inputType="textCapWords"
+            android:enabled="false"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Описание проекта (аналог EditText из add) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/tvProjectDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Описание проекта"
+            android:inputType="textMultiLine"
+            android:enabled="false"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Статус публичности (аналог CheckBox из add) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/tvIsPublic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Статус проекта"
+            android:enabled="false"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Поле поиска участников (неактивное, для единообразия) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:enabled="false">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Добавить участника"
+            android:enabled="false"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Список участников -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Участники:"
+        android:textStyle="bold"/>
+
+    <LinearLayout
+        android:id="@+id/llParticipants"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"/>
+
+</LinearLayout>

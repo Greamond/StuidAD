@@ -20,6 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -35,6 +36,7 @@ import com.example.stuid.api.ProjectsCallback;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
 import com.example.stuid.models.ProjectAdapter;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +49,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     private SwipeRefreshLayout swipeRefresh;
     private ProjectAdapter adapter;
     private ImageButton btnAdd;
+    private int currentUserId;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -61,16 +64,17 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         btnAdd = view.findViewById(R.id.btnAdd);
         btnAdd.setOnClickListener(v -> {showAddProjectDialog();});
 
-        // Настройка адаптера
-        adapter = new ProjectAdapter(new ArrayList<>(), this);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerView.setAdapter(adapter);
-
         // Настройка SwipeRefresh
         swipeRefresh.setOnRefreshListener(this::loadProjects);
 
         apiClient = new ApiClient();
         prefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+        currentUserId = prefs.getInt("employee_id", -1);
+
+        // Настройка адаптера
+        adapter = new ProjectAdapter(new ArrayList<>(), this, currentUserId);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        recyclerView.setAdapter(adapter);
 
         loadProjects();
 
@@ -78,7 +82,6 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void loadProjects() {
-        // Показываем индикатор загрузки (если это не свайп-обновление)
         if (!swipeRefresh.isRefreshing()) {
             progressBar.setVisibility(View.VISIBLE);
         }
@@ -86,18 +89,35 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         String token = prefs.getString("jwt_token", null);
         if (token == null) {
             hideLoaders();
-            showError("Not authenticated");
             redirectToLogin();
             return;
         }
 
-        apiClient.getProjects(token, new ProjectsCallback() {
+        // Сначала загружаем сотрудников
+        apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
-            public void onSuccess(List<Project> projects) {
-                requireActivity().runOnUiThread(() -> {
-                    if (isAdded()) { // Проверка что фрагмент прикреплен к Activity
-                        hideLoaders();
-                        adapter.updateProjects(projects);
+            public void onSuccess(List<Employee> employees) {
+                // Затем загружаем проекты
+                apiClient.getProjects(token, new ProjectsCallback() {
+                    @Override
+                    public void onSuccess(List<Project> projects) {
+                        requireActivity().runOnUiThread(() -> {
+                            if (isAdded()) {
+                                hideLoaders();
+                                adapter.setEmployees(employees); // Передаем список сотрудников
+                                adapter.updateProjects(projects);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(String error) {
+                        requireActivity().runOnUiThread(() -> {
+                            if (isAdded()) {
+                                hideLoaders();
+                                showError(error);
+                            }
+                        });
                     }
                 });
             }
@@ -107,10 +127,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 requireActivity().runOnUiThread(() -> {
                     if (isAdded()) {
                         hideLoaders();
-                        showError(error);
-                        if (error.contains("expired")) {
-                            redirectToLogin();
-                        }
+                        showError("Ошибка загрузки сотрудников: " + error);
                     }
                 });
             }
@@ -364,6 +381,258 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     private void redirectToLogin() {
         startActivity(new Intent(requireActivity(), SignInActivity.class));
         requireActivity().finish();
+    }
+
+    @Override
+    public void onProjectClick(int position) {
+        Project project = adapter.getProjects().get(position);
+        showProjectDetailsDialog(project);
+    }
+
+    private void showProjectDetailsDialog(Project project) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Информация о проекте");
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_view_project, null);
+        builder.setView(dialogView);
+
+        TextInputEditText etName = dialogView.findViewById(R.id.tvProjectName);
+        TextInputEditText etDescription = dialogView.findViewById(R.id.tvProjectDescription);
+        TextInputEditText etIsPublic = dialogView.findViewById(R.id.tvIsPublic);
+        LinearLayout llParticipants = dialogView.findViewById(R.id.llParticipants);
+
+        // Заполняем данные проекта
+        etName.setText(project.getName());
+        etDescription.setText(project.getDescription());
+        etIsPublic.setText(project.isPublic() ? "Публичный проект" : "Приватный проект");
+
+        // Загружаем участников проекта
+        loadParticipantsForProject(project.getId(), llParticipants);
+
+        builder.setPositiveButton("Закрыть", null);
+
+        // Для создателя проекта добавляем кнопку редактирования
+        if (project.getCreator() == prefs.getInt("employee_id",-1)) {
+            builder.setNeutralButton("Редактировать", (dialog, which) -> {
+                showEditProjectDialog(project);
+            });
+        }
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void showEditProjectDialog(Project project) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Редактировать проект");
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_add_project, null);
+        builder.setView(dialogView);
+
+        EditText etName = dialogView.findViewById(R.id.etProjectName);
+        EditText etDescription = dialogView.findViewById(R.id.etProjectDescription);
+        CheckBox cbIsPublic = dialogView.findViewById(R.id.cbIsPublic);
+        AutoCompleteTextView actvEmployeeSearch = dialogView.findViewById(R.id.actvEmployeeSearch);
+        LinearLayout llSelectedEmployees = dialogView.findViewById(R.id.llSelectedEmployees);
+
+        // Заполняем поля данными проекта
+        etName.setText(project.getName());
+        etDescription.setText(project.getDescription());
+        cbIsPublic.setChecked(project.isPublic());
+
+        // Загружаем текущих участников проекта
+        loadCurrentParticipants(project.getId(), llSelectedEmployees);
+
+        // Загружаем список сотрудников для выбора
+        loadEmployeesForDialog(actvEmployeeSearch, llSelectedEmployees);
+
+        builder.setPositiveButton("Сохранить", (dialog, which) -> {
+            String name = etName.getText().toString();
+            String description = etDescription.getText().toString();
+            boolean isPublic = cbIsPublic.isChecked();
+            List<Integer> participantIds = getSelectedEmployeeIds(llSelectedEmployees);
+
+            if (!name.isEmpty()) {
+                updateProject(project.getId(), name, description, isPublic, participantIds);
+            } else {
+                Toast.makeText(requireContext(),
+                        "Введите название проекта", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNegativeButton("Отмена", null);
+
+        // Кнопка удаления проекта (только для создателя)
+        builder.setNeutralButton("Удалить", (dialog, which) -> {
+            showDeleteConfirmationDialog(project.getId());
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void loadCurrentParticipants(int projectId, LinearLayout container) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            redirectToLogin();
+            return;
+        }
+
+        container.removeAllViews();
+        ProgressBar progressBar = new ProgressBar(requireContext());
+        container.addView(progressBar);
+
+        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
+            @Override
+            public void onSuccess(List<Employee> participants) {
+                requireActivity().runOnUiThread(() -> {
+                    container.removeAllViews();
+                    for (Employee participant : participants) {
+                        addSelectedEmployee(participant, container);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    container.removeAllViews();
+                    TextView errorView = new TextView(requireContext());
+                    errorView.setText("Ошибка загрузки участников");
+                    errorView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark));
+                    container.addView(errorView);
+                });
+            }
+        });
+    }
+
+    private void updateProject(int projectId, String name, String description,
+                               boolean isPublic, List<Integer> participantIds) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            redirectToLogin();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        Project updatedProject = new Project(projectId, name, description, isPublic, 0);
+
+        apiClient.updateProject(token, updatedProject, new ProjectCreateCallback() {
+            @Override
+            public void onSuccess(Project project) {
+                // После успешного обновления проекта обновляем участников
+                updateProjectParticipants(token, projectId, participantIds);
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    showError("Ошибка обновления проекта: " + error);
+                });
+            }
+        });
+    }
+
+    private void updateProjectParticipants(String token, int projectId, List<Integer> newParticipantIds) {
+        apiClient.updateProjectParticipants(token, projectId, newParticipantIds, new ParticipantsCallback() {
+            @Override
+            public void onSuccess() {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(),
+                            "Проект успешно обновлен", Toast.LENGTH_SHORT).show();
+                    loadProjects(); // Обновляем список проектов
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(),
+                            "Проект обновлен, но не удалось обновить участников: " + error,
+                            Toast.LENGTH_LONG).show();
+                    loadProjects(); // Все равно обновляем список проектов
+                });
+            }
+        });
+    }
+
+    private void showDeleteConfirmationDialog(int projectId) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Удаление проекта")
+                .setMessage("Вы уверены, что хотите удалить этот проект?")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    deleteProject(projectId);
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void deleteProject(int projectId) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            redirectToLogin();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.deleteProject(token, projectId, new ParticipantsCallback() {
+            @Override
+            public void onSuccess() {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(),
+                            "Проект успешно удален", Toast.LENGTH_SHORT).show();
+                    loadProjects(); // Обновляем список проектов
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    showError("Ошибка удаления проекта: " + error);
+                });
+            }
+        });
+    }
+
+    private void loadParticipantsForProject(int projectId, LinearLayout container) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            redirectToLogin();
+            return;
+        }
+
+        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
+            @Override
+            public void onSuccess(List<Employee> participants) {
+                requireActivity().runOnUiThread(() -> {
+                    container.removeAllViews();
+                    for (Employee participant : participants) {
+                        TextView participantView = new TextView(requireContext());
+                        participantView.setText(participant.getFullName());
+                        participantView.setPadding(0, 8, 0, 8);
+                        container.addView(participantView);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(),
+                            "Ошибка загрузки участников: " + error,
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     @Override
