@@ -15,21 +15,28 @@ import java.util.List;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     private List<Task> tasks;
+    private RecyclerView recyclerView;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView tvNumber, tvName, tvAssignee, tvStatus;
+        public TextView tvNumber, tvName, tvDescription, tvChapter;
 
         public ViewHolder(View itemView) {
             super(itemView);
             tvNumber = itemView.findViewById(R.id.tvTaskNumber);
             tvName = itemView.findViewById(R.id.tvTaskName);
-            tvAssignee = itemView.findViewById(R.id.tvTaskAssignee);
-            tvStatus = itemView.findViewById(R.id.tvTaskStatus);
+            tvDescription = itemView.findViewById(R.id.tvTaskDescription);
+            tvChapter = itemView.findViewById(R.id.tvTaskChapter);
         }
     }
 
-    public TaskAdapter(List<Task> tasks) {
+    public TaskAdapter(List<Task> tasks, RecyclerView recyclerView) {
         this.tasks = tasks;
+        this.recyclerView = recyclerView;
+    }
+
+    public void updateTasks(List<Task> newTasks) {
+        this.tasks = newTasks;
+        notifyDataSetChanged();
     }
 
     @Override
@@ -42,28 +49,29 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         Task task = tasks.get(position);
-        holder.tvNumber.setText("Задача #" + task.getNumber());
+        holder.tvNumber.setText("№" + task.getId());
         holder.tvName.setText(task.getName());
-        holder.tvAssignee.setText("Ответственный: " + task.getAssignee());
-        holder.tvStatus.setText(task.getStatus());
-
-        // Установка цвета статуса
-        int statusColor = getStatusColor(task.getStatus());
-        GradientDrawable drawable = (GradientDrawable) holder.tvStatus.getBackground();
-        drawable.setColor(statusColor);
+        holder.tvDescription.setText(task.getDescription());
+        holder.tvChapter.setText("Статус: " + getStatusText(task.getChapter()));
     }
 
-    private int getStatusColor(String status) {
-        switch (status.toLowerCase()) {
-            case "в работе": return Color.parseColor("#FFA000"); // оранжевый
-            case "завершена": return Color.parseColor("#4CAF50"); // зеленый
-            case "новая": return Color.parseColor("#2196F3"); // голубой
-            default: return Color.parseColor("#9E9E9E"); // серый
+    private String getStatusText(int status) {
+        switch (status) {
+            case 0: return "Новая";
+            case 1: return "В работе";
+            case 2: return "Завершена";
+            default: return "Неизвестно";
         }
     }
 
     @Override
     public int getItemCount() {
-        return tasks.size();
+        return tasks != null ? tasks.size() : 0;
+    }
+
+    public void addTask(Task task) {
+        tasks.add(0, task);
+        notifyItemInserted(0);
+        recyclerView.smoothScrollToPosition(0);
     }
 }

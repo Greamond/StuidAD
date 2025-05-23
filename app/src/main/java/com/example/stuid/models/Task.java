@@ -1,21 +1,24 @@
 package com.example.stuid.models;
 
 public class Task {
-    private String number;
+    private int id;
+    private int projectId;
     private String name;
-    private String assignee;
-    private String status;
+    private String description;
+    private int chapter;
 
-    public Task(String number, String name, String assignee, String status) {
-        this.number = number;
+    public Task(int id, int projectId, String name, String description, int chapter) {
+        this.id = id;
+        this.projectId = projectId;
         this.name = name;
-        this.assignee = assignee;
-        this.status = status;
+        this.description = description;
+        this.chapter = chapter;
     }
 
     // Геттеры
-    public String getNumber() { return number; }
+    public int getId() { return id; }
+    public int getProjectId() { return projectId; }
     public String getName() { return name; }
-    public String getAssignee() { return assignee; }
-    public String getStatus() { return status; }
+    public String getDescription() { return description; }
+    public int getChapter() { return chapter; }
 }

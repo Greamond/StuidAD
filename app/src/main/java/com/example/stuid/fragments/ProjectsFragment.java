@@ -23,6 +23,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -665,21 +666,14 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
     @Override
     public void onTaskButtonClick(int position) {
-        // Реализация перехода к задачам проекта
         Project project = adapter.getProjects().get(position);
 
-        // Раскомментируйте когда будете реализовывать TasksFragment
-        /*
+        Log.d("NAVIGATION", "Opening tasks for project ID: " + project.getId());
+
         Bundle args = new Bundle();
-        args.putString("project_number", project.getNumber());
+        args.putInt("projectId", project.getId());
 
-        TasksFragment tasksFragment = new TasksFragment();
-        tasksFragment.setArguments(args);
-
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, tasksFragment)
-                .addToBackStack(null)
-                .commit();
-        */
+        Navigation.findNavController(requireView())
+                .navigate(R.id.action_projectsFragment_to_tasksDetailFragment, args);
     }
 }

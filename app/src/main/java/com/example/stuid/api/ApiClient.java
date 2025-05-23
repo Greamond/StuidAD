@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
+import com.example.stuid.models.Task;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -741,6 +742,140 @@ public class ApiClient {
                         ));
                     }
                     callback.onSuccess(projects);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void getProjectTasks(String token, int projectId, final TasksCallback callback) {
+        String url = BASE_URL + "Tasks/project/" + projectId;
+        Log.d("API_REQUEST", "Fetching tasks from: " + url);
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("API_ERROR", "Network error", e);
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "null";
+                    Log.e("API_ERROR", "Server error: " + response.code() + ", " + errorBody);
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    Log.d("API_RESPONSE", "Tasks response: " + responseData);
+
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Task> tasks = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        tasks.add(new Task(
+                                json.getInt("Id"),
+                                json.getInt("ProjectId"),
+                                json.getString("Name"),
+                                json.getString("Description"),
+                                json.getInt("Chapter")
+                        ));
+                    }
+                    callback.onSuccess(tasks);
+                } catch (Exception e) {
+                    Log.e("API_ERROR", "Parsing error", e);
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void createTask(String token, JSONObject taskData, TaskCreateCallback callback) {
+        RequestBody body = RequestBody.create(
+                taskData.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Tasks")
+                .post(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    Task task = new Task(
+                            json.getInt("Id"),
+                            json.getInt("ProjectId"),
+                            json.getString("Name"),
+                            json.getString("Description"),
+                            0 // Глава по умолчанию
+                    );
+                    callback.onSuccess(task);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void getTask(String token, int taskId, final TaskCallback callback) {
+        String url = BASE_URL + "Tasks/" + taskId;
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    Task task = new Task(
+                            json.getInt("Id"),
+                            json.getInt("ProjectId"),
+                            json.getString("Name"),
+                            json.getString("Description"),
+                            json.getInt("Chapter")
+                    );
+                    callback.onSuccess(task);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }

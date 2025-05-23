@@ -3,12 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_navigation"
-    app:startDestination="@id/profileFragment">
+    app:startDestination="@id/projectsFragment">
 
+    <!-- Основные фрагменты для BottomNavigation -->
     <fragment
         android:id="@+id/profileFragment"
         android:name="com.example.stuid.fragments.ProfileFragment"
-        android:label="Личный кабинет"
+        android:label="Профиль"
         tools:layout="@layout/fragment_profile" />
 
     <fragment
@@ -21,11 +22,23 @@
         android:id="@+id/projectsFragment"
         android:name="com.example.stuid.fragments.ProjectsFragment"
         android:label="Проекты"
-        tools:layout="@layout/fragment_projects" />
+        tools:layout="@layout/fragment_projects">
 
+        <!-- Добавляем action для перехода к задачам -->
+        <action
+            android:id="@+id/action_projectsFragment_to_tasksDetailFragment"
+            app:destination="@id/tasksDetailFragment" />
+    </fragment>
+
+    <!-- Отдельный фрагмент для задач (не в BottomNavigation) -->
     <fragment
-        android:id="@+id/tasksFragment"
+        android:id="@+id/tasksDetailFragment"
         android:name="com.example.stuid.fragments.TasksFragment"
-        android:label="Задачи"
-        tools:layout="@layout/fragment_tasks" />
+        android:label="Задачи проекта"
+        tools:layout="@layout/fragment_tasks">
+        <argument
+            android:name="projectId"
+            app:argType="integer" />
+    </fragment>
+
 </navigation>
