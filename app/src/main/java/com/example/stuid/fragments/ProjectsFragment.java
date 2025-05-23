@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -65,70 +66,81 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         btnAdd.setOnClickListener(v -> {showAddProjectDialog();});
 
         // Настройка SwipeRefresh
-        swipeRefresh.setOnRefreshListener(this::loadProjects);
+        swipeRefresh.setOnRefreshListener(this::loadInitialData);
 
         apiClient = new ApiClient();
         prefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
         currentUserId = prefs.getInt("employee_id", -1);
+
 
         // Настройка адаптера
         adapter = new ProjectAdapter(new ArrayList<>(), this, currentUserId);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
-        loadProjects();
+        loadInitialData();
 
         return view;
     }
 
-    private void loadProjects() {
-        if (!swipeRefresh.isRefreshing()) {
-            progressBar.setVisibility(View.VISIBLE);
-        }
-
+    private void loadInitialData() {
         String token = prefs.getString("jwt_token", null);
         if (token == null) {
-            hideLoaders();
             redirectToLogin();
             return;
         }
 
-        // Сначала загружаем сотрудников
+        // Сначала загружаем сотрудников, затем проекты
         apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
-                // Затем загружаем проекты
-                apiClient.getProjects(token, new ProjectsCallback() {
-                    @Override
-                    public void onSuccess(List<Project> projects) {
-                        requireActivity().runOnUiThread(() -> {
-                            if (isAdded()) {
-                                hideLoaders();
-                                adapter.setEmployees(employees); // Передаем список сотрудников
-                                adapter.updateProjects(projects);
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailure(String error) {
-                        requireActivity().runOnUiThread(() -> {
-                            if (isAdded()) {
-                                hideLoaders();
-                                showError(error);
-                            }
-                        });
-                    }
+                requireActivity().runOnUiThread(() -> {
+                    adapter.setEmployees(employees);
+                    loadUserProjects(); // Теперь загружаем проекты
                 });
             }
 
             @Override
             public void onFailure(String error) {
                 requireActivity().runOnUiThread(() -> {
-                    if (isAdded()) {
-                        hideLoaders();
-                        showError("Ошибка загрузки сотрудников: " + error);
-                    }
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(),
+                            "Ошибка загрузки сотрудников: " + error,
+                            Toast.LENGTH_SHORT).show();
+                    loadUserProjects(); // Все равно пытаемся загрузить проекты
+                });
+            }
+        });
+    }
+
+    private void loadUserProjects() {
+        String token = prefs.getString("jwt_token", null);
+        int currentUserId = prefs.getInt("employee_id", -1);
+
+        if (token == null || currentUserId == -1) {
+            redirectToLogin();
+            return;
+        }
+
+        // Показываем прогресс-бар, если это не SwipeRefresh
+        if (!swipeRefresh.isRefreshing()) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
+
+        apiClient.getUserProjects(token, currentUserId, new ProjectsCallback() {
+            @Override
+            public void onSuccess(List<Project> projects) {
+                requireActivity().runOnUiThread(() -> {
+                    adapter.updateProjects(projects);
+                    hideLoaders(); // Скрываем все индикаторы загрузки
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    hideLoaders();
+                    showError(error);
                 });
             }
         });
@@ -142,14 +154,30 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 .inflate(R.layout.dialog_add_project, null);
         builder.setView(dialogView);
 
-        EditText etName = dialogView.findViewById(R.id.etProjectName);
-        EditText etDescription = dialogView.findViewById(R.id.etProjectDescription);
+        TextInputEditText etName = dialogView.findViewById(R.id.etProjectName);
+        TextInputEditText etDescription = dialogView.findViewById(R.id.etProjectDescription);
         CheckBox cbIsPublic = dialogView.findViewById(R.id.cbIsPublic);
         AutoCompleteTextView actvEmployeeSearch = dialogView.findViewById(R.id.actvEmployeeSearch);
         LinearLayout llSelectedEmployees = dialogView.findViewById(R.id.llSelectedEmployees);
+        LinearLayout participantsContainer = dialogView.findViewById(R.id.participantsContainer);
+        TextView tvAllParticipants = dialogView.findViewById(R.id.tvAllParticipants);
 
-        // Загружаем список сотрудников для выбора
-        loadEmployeesForDialog(actvEmployeeSearch, llSelectedEmployees);
+        // Обработчик изменения состояния чекбокса
+        cbIsPublic.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                participantsContainer.setVisibility(View.GONE);
+                tvAllParticipants.setVisibility(View.VISIBLE);
+                llSelectedEmployees.removeAllViews(); // Очищаем выбранных участников
+            } else {
+                participantsContainer.setVisibility(View.VISIBLE);
+                tvAllParticipants.setVisibility(View.GONE);
+            }
+        });
+
+        // Загружаем сотрудников только если проект не публичный
+        if (!cbIsPublic.isChecked()) {
+            loadEmployeesForDialog(actvEmployeeSearch, llSelectedEmployees);
+        }
 
         builder.setPositiveButton("Создать", (dialog, which) -> {
             String name = etName.getText().toString();
@@ -157,7 +185,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             boolean isPublic = cbIsPublic.isChecked();
 
             if (!name.isEmpty()) {
-                createNewProject(name, description, isPublic, getSelectedEmployeeIds(llSelectedEmployees));
+                List<Integer> participantIds = isPublic ?
+                        new ArrayList<>() : // Пустой список для публичного проекта
+                        getSelectedEmployeeIds(llSelectedEmployees);
+
+                createNewProject(name, description, isPublic, participantIds);
             } else {
                 Toast.makeText(requireContext(),
                         "Введите название проекта", Toast.LENGTH_SHORT).show();
@@ -304,26 +336,22 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
-        // Создаем проект без указания Creator (сервер добавит сам)
         Project newProject = new Project(0, name, description, isPublic, 0);
         progressBar.setVisibility(View.VISIBLE);
 
         apiClient.createProject(token, newProject, new ProjectCreateCallback() {
             @Override
             public void onSuccess(Project createdProject) {
-                // После успешного создания проекта добавляем участников
-                if (!participantIds.isEmpty()) {
+                if (!isPublic && !participantIds.isEmpty()) {
                     addParticipantsToProject(token, createdProject.getId(), participantIds);
                 } else {
                     requireActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
-                                "Проект '" + createdProject.getName() + "' создан",
-                                Toast.LENGTH_SHORT).show();
-
-                        // Добавляем проект в список
+                        String message = isPublic ?
+                                "Публичный проект '" + createdProject.getName() + "' создан" :
+                                "Проект '" + createdProject.getName() + "' создан";
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
                         adapter.addProject(createdProject);
-                        recyclerView.smoothScrollToPosition(0);
                     });
                 }
             }
@@ -352,7 +380,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     Toast.makeText(requireContext(),
                             "Проект создан и участники добавлены",
                             Toast.LENGTH_SHORT).show();
-                    loadProjects(); // Обновляем список проектов
+                    loadUserProjects(); // Обновляем список проектов
                 });
             }
 
@@ -363,7 +391,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     Toast.makeText(requireContext(),
                             "Проект создан, но не удалось добавить участников: " + error,
                             Toast.LENGTH_LONG).show();
-                    loadProjects(); // Все равно обновляем список проектов
+                    loadUserProjects(); // Все равно обновляем список проектов
                 });
             }
         });
@@ -545,7 +573,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     progressBar.setVisibility(View.GONE);
                     Toast.makeText(requireContext(),
                             "Проект успешно обновлен", Toast.LENGTH_SHORT).show();
-                    loadProjects(); // Обновляем список проектов
+                    loadUserProjects(); // Обновляем список проектов
                 });
             }
 
@@ -556,7 +584,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     Toast.makeText(requireContext(),
                             "Проект обновлен, но не удалось обновить участников: " + error,
                             Toast.LENGTH_LONG).show();
-                    loadProjects(); // Все равно обновляем список проектов
+                    loadUserProjects(); // Все равно обновляем список проектов
                 });
             }
         });
@@ -589,7 +617,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     progressBar.setVisibility(View.GONE);
                     Toast.makeText(requireContext(),
                             "Проект успешно удален", Toast.LENGTH_SHORT).show();
-                    loadProjects(); // Обновляем список проектов
+                    loadUserProjects(); // Обновляем список проектов
                 });
             }
 

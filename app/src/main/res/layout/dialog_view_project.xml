@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Название проекта (аналог EditText из add) -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,7 +19,6 @@
             android:enabled="false"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Описание проекта (аналог EditText из add) -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -36,7 +34,6 @@
             android:enabled="false"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Статус публичности (аналог CheckBox из add) -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

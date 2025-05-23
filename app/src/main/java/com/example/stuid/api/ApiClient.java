@@ -703,4 +703,48 @@ public class ApiClient {
             }
         });
     }
+
+    public void getUserProjects(String token, int userId, final ProjectsCallback callback) {
+        String url = BASE_URL + "Projects/forUser/" + userId;
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Project> projects = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        projects.add(new Project(
+                                json.getInt("Id"),
+                                json.getString("Name"),
+                                json.getString("Description"),
+                                json.getBoolean("IsPublic"),
+                                json.getInt("Creator")
+                        ));
+                    }
+                    callback.onSuccess(projects);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
 }

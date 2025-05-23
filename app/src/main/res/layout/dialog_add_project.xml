@@ -5,20 +5,32 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <EditText
-        android:id="@+id/etProjectName"
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Название проекта"
-        android:inputType="textCapWords"/>
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-    <EditText
-        android:id="@+id/etProjectDescription"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etProjectName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Название проекта"
+            android:inputType="textCapWords" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Описание проекта"
-        android:inputType="textMultiLine"/>
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etProjectDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Описание проекта"
+            android:inputType="textMultiLine"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
     <CheckBox
         android:id="@+id/cbIsPublic"
@@ -27,34 +39,49 @@
         android:layout_marginTop="8dp"
         android:text="Публичный проект"/>
 
-    <!-- Добавляем поле поиска участников -->
-    <com.google.android.material.textfield.TextInputLayout
+    <LinearLayout
+        android:id="@+id/participantsContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        android:orientation="vertical"
+        android:visibility="visible">
 
-        <AutoCompleteTextView
-            android:id="@+id/actvEmployeeSearch"
+        <!-- Добавляем поле поиска участников -->
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Добавить участника"
-            android:inputType="text"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            android:layout_marginTop="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
 
-    <!-- Список выбранных участников -->
+            <AutoCompleteTextView
+                android:id="@+id/actvEmployeeSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Добавить участника"
+                android:inputType="text"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Список выбранных участников -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Участники:"
+            android:textStyle="bold"/>
+
+        <LinearLayout
+            android:id="@+id/llSelectedEmployees"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"/>
+    </LinearLayout>
+
     <TextView
+        android:id="@+id/tvAllParticipants"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Участники:"
-        android:textStyle="bold"/>
-
-    <LinearLayout
-        android:id="@+id/llSelectedEmployees"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical"/>
+        android:text="Участники: все"
+        android:visibility="gone"/>
 
 </LinearLayout>
