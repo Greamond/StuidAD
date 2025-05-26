@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -32,6 +33,7 @@ import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.TaskCreateCallback;
+import com.example.stuid.api.TaskDeleteCallback;
 import com.example.stuid.api.TasksCallback;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Task;
@@ -55,11 +57,15 @@ public class TasksFragment extends Fragment {
     private RecyclerView recyclerView;
     private TaskAdapter adapter;
     private List<Task> tasks = new ArrayList<>();
+    private int currentUserId;
+    private boolean canEditTask = false;
+    private List<Employee> currentTaskAssignees = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+        currentUserId = prefs.getInt("employee_id", -1);
 
         if (getArguments() != null) {
             projectId = getArguments().getInt("projectId", -1);
@@ -81,8 +87,12 @@ public class TasksFragment extends Fragment {
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
         apiClient = new ApiClient();
 
-        // Настройка SwipeRefresh
-        swipeRefresh.setOnRefreshListener(this::loadTasks);
+        // Инициализация SwipeRefresh
+        swipeRefresh = view.findViewById(R.id.swipeRefresh);
+        swipeRefresh.setOnRefreshListener(() -> {
+            loadTasks();
+            loadProjectParticipants();
+        });
 
         return view;
     }
@@ -97,6 +107,11 @@ public class TasksFragment extends Fragment {
 
         // Кнопка добавления задачи
         view.findViewById(R.id.btnAddTask).setOnClickListener(v -> showAddTaskDialog());
+
+        adapter.setOnTaskClickListener((position, task) -> {
+            // Проверяем, является ли пользователь ответственным за задачу
+            checkEditPermission(task, () -> showTaskDialog(task));
+        });
     }
 
     private void loadTasks() {
@@ -164,7 +179,7 @@ public class TasksFragment extends Fragment {
             Employee selected = adapter.getItem(position);
             if (selected != null && !selectedAssignees.contains(selected)) {
                 selectedAssignees.add(selected);
-                addAssigneeView(selected, llSelectedAssignees);
+                addAssigneeView(selected, llSelectedAssignees, true);
                 actvAssigneeSearch.setText("");
             }
         });
@@ -184,7 +199,7 @@ public class TasksFragment extends Fragment {
         builder.show();
     }
 
-    private void addAssigneeView(Employee employee, LinearLayout container) {
+    private void addAssigneeView(Employee employee, LinearLayout container, boolean removable) {
         View view = LayoutInflater.from(requireContext())
                 .inflate(R.layout.item_selected_employee, container, false);
 
@@ -192,10 +207,14 @@ public class TasksFragment extends Fragment {
         ImageButton btnRemove = view.findViewById(R.id.btnRemoveEmployee);
 
         tvName.setText(employee.getFullName());
-        btnRemove.setOnClickListener(v -> {
-            container.removeView(view);
-            selectedAssignees.remove(employee);
-        });
+        btnRemove.setVisibility(removable ? View.VISIBLE : View.GONE);
+
+        if (removable) {
+            btnRemove.setOnClickListener(v -> {
+                container.removeView(view);
+                selectedAssignees.remove(employee);
+            });
+        }
 
         container.addView(view);
     }
@@ -229,15 +248,25 @@ public class TasksFragment extends Fragment {
             assigneeIds.add(assignee.getEmployeeId());
         }
 
+        // Получаем ID текущего пользователя
+        int creatorId = prefs.getInt("employee_id", -1);
+        if (creatorId == -1) {
+            Toast.makeText(requireContext(), "Ошибка: не удалось определить создателя задачи",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Создаем JSON объект для отправки
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("Name", name);
             jsonBody.put("Description", description);
             jsonBody.put("ProjectId", projectId);
+            jsonBody.put("CreatorId", creatorId); // Добавляем creatorId
             jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Toast.makeText(requireContext(), "Ошибка создания задачи", Toast.LENGTH_SHORT).show();
+            return;
         }
 
         progressBar.setVisibility(View.VISIBLE);
@@ -248,7 +277,321 @@ public class TasksFragment extends Fragment {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     adapter.addTask(task);
+                    selectedAssignees.clear(); // Очищаем выбранных ответственных
                     Toast.makeText(requireContext(), "Задача создана", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void checkEditPermission(Task task, Runnable onSuccess) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        // Проверяем, является ли текущий пользователь создателем задачи
+        boolean isCreator = task.getCreatorId() == currentUserId;
+
+        if (isCreator) {
+            // Если пользователь создатель - сразу разрешаем редактирование
+            requireActivity().runOnUiThread(() -> {
+                canEditTask = true;
+                onSuccess.run();
+            });
+            return;
+        }
+
+        // Если не создатель - проверяем, является ли ответственным
+        apiClient.getTaskAssignees(token, task.getId(), new EmployeesCallback() {
+            @Override
+            public void onSuccess(List<Employee> assignees) {
+                requireActivity().runOnUiThread(() -> {
+                    canEditTask = false;
+                    for (Employee assignee : assignees) {
+                        if (assignee.getEmployeeId() == currentUserId) {
+                            canEditTask = true;
+                            break;
+                        }
+                    }
+                    onSuccess.run();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                Log.e("TasksFragment", "Error loading assignees: " + error);
+                requireActivity().runOnUiThread(() -> {
+                    canEditTask = false;
+                    onSuccess.run();
+                });
+            }
+        });
+    }
+
+    private void setupAssigneeSearch(AutoCompleteTextView actvAssigneeSearch,
+                                     LinearLayout llSelectedAssignees) {
+        Log.d("TasksFragment", "Setting up assignee search with " + projectParticipants.size() + " participants");
+
+        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                projectParticipants
+        ) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                Employee employee = getItem(position);
+                if (employee != null) {
+                    ((TextView) view).setText(employee.getFullName());
+                }
+                return view;
+            }
+        };
+
+        actvAssigneeSearch.setAdapter(adapter);
+        actvAssigneeSearch.setOnItemClickListener((parent, view, position, id) -> {
+            Employee selected = adapter.getItem(position);
+            if (selected != null && !selectedAssignees.contains(selected)) {
+                Log.d("TasksFragment", "Assignee selected: " + selected.getFullName());
+                selectedAssignees.add(selected);
+                addAssigneeView(selected, llSelectedAssignees, true);
+                actvAssigneeSearch.setText("");
+            }
+        });
+    }
+
+    private boolean checkIsAssignee(int userId, List<Employee> assignees) {
+        for (Employee assignee : assignees) {
+            if (assignee.getEmployeeId() == userId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void showTaskDialog(Task task) {
+        // Сначала проверяем права
+        checkEditPermission(task, () -> {
+            // Теперь canEditTask установлен правильно
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+            builder.setTitle(task.getName());
+
+            View dialogView = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.dialog_task, null);
+            builder.setView(dialogView);
+
+            EditText etName = dialogView.findViewById(R.id.etTaskName);
+            EditText etDescription = dialogView.findViewById(R.id.etTaskDescription);
+            TextView tvStatus = dialogView.findViewById(R.id.tvTaskStatus);
+            AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
+            LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
+            ProgressBar progressBarDialog = dialogView.findViewById(R.id.progressBarDialog);
+
+            // Заполняем поля
+            etName.setText(task.getName());
+            etDescription.setText(task.getDescription());
+            tvStatus.setText("Статус: " + adapter.getStatusText(task.getChapter()));
+
+            // Настраиваем доступность
+            etName.setEnabled(canEditTask);
+            etDescription.setEnabled(canEditTask);
+            actvAssigneeSearch.setEnabled(canEditTask);
+
+            // Показываем создателя задачи
+            TextView tvCreator = dialogView.findViewById(R.id.tvCreator);
+            if (tvCreator != null) {
+                tvCreator.setText("Создатель: " + getCreatorName(task.getCreatorId()));
+            }
+
+            // Загружаем текущих ответственных
+            progressBarDialog.setVisibility(View.VISIBLE);
+            loadTaskAssignees(task.getId(), llSelectedAssignees, () -> {
+                progressBarDialog.setVisibility(View.GONE);
+
+                if (canEditTask) {
+                    setupAssigneeSearch(actvAssigneeSearch, llSelectedAssignees);
+                }
+            });
+
+            builder.setPositiveButton("Закрыть", null);
+
+            if (task.getCreatorId() == currentUserId) {
+                builder.setNegativeButton("Удалить", (dialog, which) -> {
+                    showDeleteConfirmationDialog(task);
+                });
+            }
+
+            builder.setPositiveButton("Закрыть", null);
+
+            if (canEditTask) {
+                builder.setNeutralButton("Сохранить", (dialog, which) -> {
+                    updateTask(task.getId(),
+                            etName.getText().toString(),
+                            etDescription.getText().toString());
+                });
+            }
+
+            builder.show();
+        });
+    }
+
+    private String getCreatorName(int creatorId) {
+        for (Employee employee : projectParticipants) {
+            if (employee.getEmployeeId() == creatorId) {
+                return employee.getFullName();
+            }
+        }
+        return "Неизвестный";
+    }
+
+    private void loadTaskAssignees(int taskId, LinearLayout container, Runnable onComplete) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            Toast.makeText(requireContext(), "Требуется авторизация", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        container.removeAllViews();
+        ProgressBar progressBar = new ProgressBar(requireContext());
+        container.addView(progressBar);
+
+        apiClient.getTaskAssignees(token, taskId, new EmployeesCallback() {
+            @Override
+            public void onSuccess(List<Employee> assignees) {
+                requireActivity().runOnUiThread(() -> {
+                    container.removeAllViews();
+                    currentTaskAssignees.clear();
+                    currentTaskAssignees.addAll(assignees);
+                    selectedAssignees.clear();
+                    selectedAssignees.addAll(assignees);
+
+                    if (assignees.isEmpty()) {
+                        TextView noAssignees = new TextView(requireContext());
+                        noAssignees.setText("Нет ответственных");
+                        container.addView(noAssignees);
+                    } else {
+                        for (Employee assignee : assignees) {
+                            addAssigneeView(assignee, container, canEditTask);
+                        }
+                    }
+
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    container.removeAllViews();
+                    TextView errorView = new TextView(requireContext());
+                    errorView.setText("Ошибка загрузки ответственных");
+                    container.addView(errorView);
+
+                    Log.e("TasksFragment", "Error loading assignees: " + error);
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                });
+            }
+        });
+    }
+
+    private void updateTask(int taskId, String name, String description) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        List<Integer> assigneeIds = new ArrayList<>();
+        for (Employee assignee : selectedAssignees) {
+            assigneeIds.add(assignee.getEmployeeId());
+        }
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("Name", name);
+            jsonBody.put("Description", description);
+            jsonBody.put("ChapterId", 1);
+            jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
+        } catch (JSONException e) {
+            Toast.makeText(requireContext(), "Ошибка формирования запроса",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.updateTask(token, taskId, jsonBody, new TaskCreateCallback() {
+            @Override
+            public void onSuccess(Task updatedTask) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    selectedAssignees.clear();
+
+                    // Обновляем задачу в списке
+                    for (int i = 0; i < tasks.size(); i++) {
+                        if (tasks.get(i).getId() == updatedTask.getId()) {
+                            tasks.set(i, updatedTask);
+                            adapter.notifyItemChanged(i);
+                            break;
+                        }
+                    }
+
+                    // Обновляем список задач
+                    loadTasks();
+                    Toast.makeText(requireContext(), "Задача обновлена",
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Ошибка: " + error,
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void showDeleteConfirmationDialog(Task task) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Подтверждение удаления")
+                .setMessage("Вы уверены, что хотите удалить эту задачу?")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    deleteTask(task);
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void deleteTask(Task task) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.deleteTask(token, task.getId(), new TaskDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    // Удаляем задачу из списка
+                    int position = tasks.indexOf(task);
+                    if (position != -1) {
+                        tasks.remove(position);
+                        adapter.notifyItemRemoved(position);
+                    }
+                    Toast.makeText(requireContext(), "Задача удалена", Toast.LENGTH_SHORT).show();
                 });
             }
 

@@ -783,13 +783,15 @@ public class ApiClient {
 
                     for (int i = 0; i < jsonArray.length(); i++) {
                         JSONObject json = jsonArray.getJSONObject(i);
-                        tasks.add(new Task(
+                        Task task = new Task(
                                 json.getInt("Id"),
                                 json.getInt("ProjectId"),
                                 json.getString("Name"),
                                 json.getString("Description"),
-                                json.getInt("Chapter")
-                        ));
+                                json.getInt("Chapter"),
+                                json.getInt("CreatorId")
+                        );
+                        tasks.add(task);
                     }
                     callback.onSuccess(tasks);
                 } catch (Exception e) {
@@ -834,8 +836,9 @@ public class ApiClient {
                             json.getInt("ProjectId"),
                             json.getString("Name"),
                             json.getString("Description"),
-                            0 // Глава по умолчанию
+                            json.getInt("Chapter")
                     );
+                    task.setCreatorId(json.getInt("CreatorId")); // Устанавливаем creatorId
                     callback.onSuccess(task);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
@@ -844,11 +847,9 @@ public class ApiClient {
         });
     }
 
-    public void getTask(String token, int taskId, final TaskCallback callback) {
-        String url = BASE_URL + "Tasks/" + taskId;
-
+    public void getTaskAssignees(String token, int taskId, EmployeesCallback callback) {
         Request request = new Request.Builder()
-                .url(url)
+                .url(BASE_URL + "TaskResponsibles/task/" + taskId) // Исправленный URL
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
@@ -867,6 +868,56 @@ public class ApiClient {
 
                 try {
                     String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Employee> employees = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        Employee employee = new Employee();
+                        employee.setEmployeeId(json.getInt("EmployeeId"));
+                        employee.setFirstName(json.getString("FirstName"));
+                        employee.setLastName(json.getString("LastName"));
+                        employee.setMiddleName(json.getString("MiddleName"));
+                        employees.add(employee);
+                    }
+                    callback.onSuccess(employees);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void updateTask(String token, int taskId, JSONObject taskData, TaskCreateCallback callback) {
+        RequestBody body = RequestBody.create(
+                taskData.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Tasks/" + taskId)
+                .put(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "null";
+                    Log.e("API_ERROR", "Server error: " + response.code() + ", " + errorBody);
+                    callback.onFailure("Server error: " + response.code() + ": " + errorBody);
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
                     JSONObject json = new JSONObject(responseData);
                     Task task = new Task(
                             json.getInt("Id"),
@@ -875,10 +926,35 @@ public class ApiClient {
                             json.getString("Description"),
                             json.getInt("Chapter")
                     );
+                    task.setCreatorId(json.getInt("CreatorId")); // Устанавливаем creatorId
                     callback.onSuccess(task);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }
+            }
+        });
+    }
+
+    public void deleteTask(String token, int taskId, TaskDeleteCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Tasks/" + taskId)
+                .delete()
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+                callback.onSuccess();
             }
         });
     }

@@ -53,13 +53,19 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         holder.tvName.setText(task.getName());
         holder.tvDescription.setText(task.getDescription());
         holder.tvChapter.setText("Статус: " + getStatusText(task.getChapter()));
+
+        holder.itemView.setOnClickListener(v -> {
+            if (taskClickListener != null) {
+                taskClickListener.onTaskClick(position, task);
+            }
+        });
     }
 
-    private String getStatusText(int status) {
+    public String getStatusText(int status) {
         switch (status) {
-            case 0: return "Новая";
-            case 1: return "В работе";
-            case 2: return "Завершена";
+            case 1: return "Новая";
+            case 2: return "В работе";
+            case 3: return "Завершена";
             default: return "Неизвестно";
         }
     }
@@ -73,5 +79,15 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         tasks.add(0, task);
         notifyItemInserted(0);
         recyclerView.smoothScrollToPosition(0);
+    }
+
+    public interface OnTaskClickListener {
+        void onTaskClick(int position, Task task);
+    }
+
+    private OnTaskClickListener taskClickListener;
+
+    public void setOnTaskClickListener(OnTaskClickListener listener) {
+        this.taskClickListener = listener;
     }
 }
