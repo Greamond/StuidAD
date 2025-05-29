@@ -91,11 +91,14 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
+        progressBar.setVisibility(View.VISIBLE);
+
         // Сначала загружаем сотрудников, затем проекты
         apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
                 requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
                     adapter.setEmployees(employees);
                     loadUserProjects(); // Теперь загружаем проекты
                 });
@@ -672,6 +675,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         Bundle args = new Bundle();
         args.putInt("projectId", project.getId());
+        args.putInt("creatorId", project.getCreator());
 
         Navigation.findNavController(requireView())
                 .navigate(R.id.action_projectsFragment_to_tasksDetailFragment, args);

@@ -31,6 +31,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
+import com.example.stuid.api.EmployeeCallback;
 import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.TaskCreateCallback;
 import com.example.stuid.api.TaskDeleteCallback;
@@ -45,9 +46,11 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class TasksFragment extends Fragment {
     private int projectId;
+    private int projectCreatorId;
     private List<Employee> projectParticipants = new ArrayList<>();
     private List<Employee> selectedAssignees = new ArrayList<>();
     private SharedPreferences prefs;
@@ -69,6 +72,7 @@ public class TasksFragment extends Fragment {
 
         if (getArguments() != null) {
             projectId = getArguments().getInt("projectId", -1);
+            projectCreatorId = getArguments().getInt("creatorId", -1);
         }
     }
 
@@ -79,13 +83,14 @@ public class TasksFragment extends Fragment {
 
         // Инициализация RecyclerView
         recyclerView = view.findViewById(R.id.rvTasks);
-        adapter = new TaskAdapter(tasks, recyclerView);
+        apiClient = new ApiClient();
+        adapter = new TaskAdapter(tasks, recyclerView, projectParticipants, currentUserId, apiClient, prefs.getString("jwt_token", null));
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
-        apiClient = new ApiClient();
+
 
         // Инициализация SwipeRefresh
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
@@ -93,6 +98,9 @@ public class TasksFragment extends Fragment {
             loadTasks();
             loadProjectParticipants();
         });
+
+        loadTasks();
+        loadProjectParticipants();
 
         return view;
     }
@@ -296,10 +304,12 @@ public class TasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
+        // Проверяем, является ли пользователь создателем проекта
+        boolean isProjectCreator = currentUserId == projectCreatorId;
         // Проверяем, является ли текущий пользователь создателем задачи
-        boolean isCreator = task.getCreatorId() == currentUserId;
+        boolean isTaskCreator  = task.getCreatorId() == currentUserId;
 
-        if (isCreator) {
+        if (isProjectCreator || isTaskCreator) {
             // Если пользователь создатель - сразу разрешаем редактирование
             requireActivity().runOnUiThread(() -> {
                 canEditTask = true;
@@ -367,15 +377,6 @@ public class TasksFragment extends Fragment {
         });
     }
 
-    private boolean checkIsAssignee(int userId, List<Employee> assignees) {
-        for (Employee assignee : assignees) {
-            if (assignee.getEmployeeId() == userId) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void showTaskDialog(Task task) {
         // Сначала проверяем права
         checkEditPermission(task, () -> {
@@ -393,7 +394,6 @@ public class TasksFragment extends Fragment {
             TextView tvStatus = dialogView.findViewById(R.id.tvTaskStatus);
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
-            ProgressBar progressBarDialog = dialogView.findViewById(R.id.progressBarDialog);
 
             // Заполняем поля
             etName.setText(task.getName());
@@ -408,13 +408,14 @@ public class TasksFragment extends Fragment {
             // Показываем создателя задачи
             TextView tvCreator = dialogView.findViewById(R.id.tvCreator);
             if (tvCreator != null) {
-                tvCreator.setText("Создатель: " + getCreatorName(task.getCreatorId()));
+                tvCreator.setText("Создатель: загрузка...");
+                getCreatorName(task.getCreatorId(), name -> {
+                    tvCreator.setText("Создатель: " + name);
+                });
             }
 
             // Загружаем текущих ответственных
-            progressBarDialog.setVisibility(View.VISIBLE);
             loadTaskAssignees(task.getId(), llSelectedAssignees, () -> {
-                progressBarDialog.setVisibility(View.GONE);
 
                 if (canEditTask) {
                     setupAssigneeSearch(actvAssigneeSearch, llSelectedAssignees);
@@ -423,7 +424,7 @@ public class TasksFragment extends Fragment {
 
             builder.setPositiveButton("Закрыть", null);
 
-            if (task.getCreatorId() == currentUserId) {
+            if (canEditTask && (currentUserId == task.getCreatorId() || currentUserId == projectCreatorId)) {
                 builder.setNegativeButton("Удалить", (dialog, which) -> {
                     showDeleteConfirmationDialog(task);
                 });
@@ -443,13 +444,37 @@ public class TasksFragment extends Fragment {
         });
     }
 
-    private String getCreatorName(int creatorId) {
+    private void getCreatorName(int creatorId, Consumer<String> callback) {
+        // Сначала проверяем локальные данные
         for (Employee employee : projectParticipants) {
             if (employee.getEmployeeId() == creatorId) {
-                return employee.getFullName();
+                callback.accept(employee.getFullName());
+                return;
             }
         }
-        return "Неизвестный";
+
+        if (creatorId == currentUserId) {
+            callback.accept("Вы");
+            return;
+        }
+
+        // Если не нашли локально, запрашиваем с сервера
+        String token = prefs.getString("jwt_token", null);
+        if (token != null) {
+            apiClient.getEmployeeInfo(token, creatorId, new EmployeeCallback() {
+                @Override
+                public void onSuccess(Employee employee) {
+                    callback.accept(employee.getFullName());
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    callback.accept("Неизвестный");
+                }
+            });
+        } else {
+            callback.accept("Неизвестный");
+        }
     }
 
     private void loadTaskAssignees(int taskId, LinearLayout container, Runnable onComplete) {

@@ -958,4 +958,44 @@ public class ApiClient {
             }
         });
     }
+
+    public void getEmployeeInfo(String token, int employeeId, EmployeeCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Users/" + employeeId)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful()) {
+                        callback.onFailure("Server error: " + response.code());
+                        return;
+                    }
+
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+
+                    Employee employee = new Employee();
+                    employee.setEmployeeId(json.getInt("EmployeeId"));
+                    employee.setLastName(json.getString("LastName"));
+                    employee.setFirstName(json.getString("FirstName"));
+                    employee.setMiddleName(json.getString("MiddleName"));
+                    employee.setEmail(json.getString("Email"));
+                    employee.setDescription(json.getString("Description"));
+                    employee.setPhoto(json.getString("Photo"));
+
+                    callback.onSuccess(employee);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
 }
