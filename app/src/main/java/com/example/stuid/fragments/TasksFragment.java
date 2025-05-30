@@ -3,6 +3,7 @@ package com.example.stuid.fragments;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -36,9 +37,11 @@ import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.TaskCreateCallback;
 import com.example.stuid.api.TaskDeleteCallback;
 import com.example.stuid.api.TasksCallback;
+import com.example.stuid.models.ColumnsAdapter;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Task;
 import com.example.stuid.models.TaskAdapter;
+import com.example.stuid.models.TaskColumn;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -57,12 +60,14 @@ public class TasksFragment extends Fragment {
     private ProgressBar progressBar;
     private SwipeRefreshLayout swipeRefresh;
     private ApiClient apiClient;
-    private RecyclerView recyclerView;
-    private TaskAdapter adapter;
     private List<Task> tasks = new ArrayList<>();
     private int currentUserId;
     private boolean canEditTask = false;
     private List<Employee> currentTaskAssignees = new ArrayList<>();
+
+    private RecyclerView columnsRecyclerView;
+    private ColumnsAdapter columnsAdapter;
+    private List<TaskColumn> columns = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -81,26 +86,36 @@ public class TasksFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_tasks, container, false);
 
-        // Инициализация RecyclerView
-        recyclerView = view.findViewById(R.id.rvTasks);
-        apiClient = new ApiClient();
-        adapter = new TaskAdapter(tasks, recyclerView, projectParticipants, currentUserId, apiClient, prefs.getString("jwt_token", null));
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerView.setAdapter(adapter);
-
+        // Инициализация элементов UI
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
+        apiClient = new ApiClient();
 
+        // Настройка RecyclerView для колонок
+        columnsRecyclerView = view.findViewById(R.id.rvColumns);
+        columnsRecyclerView.setLayoutManager(new LinearLayoutManager(
+                getContext(), LinearLayoutManager.HORIZONTAL, false));
 
-        // Инициализация SwipeRefresh
-        swipeRefresh = view.findViewById(R.id.swipeRefresh);
-        swipeRefresh.setOnRefreshListener(() -> {
-            loadTasks();
-            loadProjectParticipants();
-        });
+        columnsAdapter = new ColumnsAdapter(
+                columns,
+                projectParticipants,
+                currentUserId,
+                apiClient,
+                prefs.getString("jwt_token", null),
+                this::onTaskClicked,
+                this::onAddTaskClicked
+        );
+        columnsRecyclerView.setAdapter(columnsAdapter);
 
-        loadTasks();
-        loadProjectParticipants();
+        // Кнопка добавления колонки
+        view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showAddColumnDialog());
+
+        // Кнопка добавления задачи (глобальная)
+        view.findViewById(R.id.btnAddTask).setOnClickListener(v -> showAddTaskDialog(1));
+
+        // Обновление данных
+        swipeRefresh.setOnRefreshListener(this::refreshData);
+        loadInitialData();
 
         return view;
     }
@@ -114,29 +129,90 @@ public class TasksFragment extends Fragment {
         loadProjectParticipants();
 
         // Кнопка добавления задачи
-        view.findViewById(R.id.btnAddTask).setOnClickListener(v -> showAddTaskDialog());
+        view.findViewById(R.id.btnAddTask).setOnClickListener(v -> showAddTaskDialog(1));
+    }
 
-        adapter.setOnTaskClickListener((position, task) -> {
-            // Проверяем, является ли пользователь ответственным за задачу
-            checkEditPermission(task, () -> showTaskDialog(task));
+    private void loadInitialData() {
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Загрузка участников проекта
+        loadProjectParticipants(() -> {
+            // После загрузки участников загружаем колонки и задачи
+            loadColumns();
         });
+    }
+
+    private void refreshData() {
+        loadProjectParticipants(() -> {
+            loadTasks();
+            swipeRefresh.setRefreshing(false);
+        });
+    }
+
+    private void loadProjectParticipants(Runnable onComplete) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
+            @Override
+            public void onSuccess(List<Employee> participants) {
+                requireActivity().runOnUiThread(() -> {
+                    projectParticipants.clear();
+                    projectParticipants.addAll(participants);
+                    if (onComplete != null) onComplete.run();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(),
+                            "Ошибка загрузки участников: " + error,
+                            Toast.LENGTH_SHORT).show();
+                    if (onComplete != null) onComplete.run();
+                });
+            }
+        });
+    }
+
+    private void loadColumns() {
+        // Здесь должна быть загрузка колонок с сервера
+        // Временно создаем стандартные колонки
+        columns.clear();
+        columns.add(new TaskColumn(1, "Новые", new ArrayList<>()));
+        columns.add(new TaskColumn(2, "В работе", new ArrayList<>()));
+        columns.add(new TaskColumn(3, "На проверке", new ArrayList<>()));
+        columns.add(new TaskColumn(4, "Завершённые", new ArrayList<>()));
+
+        columnsAdapter.notifyDataSetChanged();
+        loadTasks();
     }
 
     private void loadTasks() {
         String token = prefs.getString("jwt_token", null);
         if (token == null || projectId == -1) return;
 
-        progressBar.setVisibility(View.VISIBLE);
-
         apiClient.getProjectTasks(token, projectId, new TasksCallback() {
             @Override
             public void onSuccess(List<Task> loadedTasks) {
                 requireActivity().runOnUiThread(() -> {
+                    // Очищаем задачи во всех колонках
+                    for (TaskColumn column : columns) {
+                        column.getTasks().clear();
+                    }
+
+                    // Распределяем задачи по колонкам
+                    for (Task task : loadedTasks) {
+                        for (TaskColumn column : columns) {
+                            if (column.getId() == task.getChapter()) {
+                                column.getTasks().add(task);
+                                break;
+                            }
+                        }
+                    }
+
+                    columnsAdapter.notifyDataSetChanged();
                     progressBar.setVisibility(View.GONE);
-                    swipeRefresh.setRefreshing(false);
-                    tasks.clear();
-                    tasks.addAll(loadedTasks);
-                    adapter.notifyDataSetChanged();
                 });
             }
 
@@ -144,15 +220,53 @@ public class TasksFragment extends Fragment {
             public void onFailure(String error) {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    swipeRefresh.setRefreshing(false);
-                    Toast.makeText(requireContext(), "Ошибка загрузки задач: " + error,
+                    Toast.makeText(requireContext(),
+                            "Ошибка загрузки задач: " + error,
                             Toast.LENGTH_SHORT).show();
                 });
             }
         });
     }
 
-    private void showAddTaskDialog() {
+    private void onTaskClicked(Task task) {
+        checkEditPermission(task, () -> showTaskDialog(task));
+    }
+
+    private void onAddTaskClicked(int columnId) {
+        showAddTaskDialog(columnId);
+    }
+
+    private void showAddColumnDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Создать новую колонку");
+
+        final EditText input = new EditText(requireContext());
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(input);
+
+        builder.setPositiveButton("Создать", (dialog, which) -> {
+            String columnName = input.getText().toString().trim();
+            if (!columnName.isEmpty()) {
+                createColumn(columnName);
+            } else {
+                Toast.makeText(requireContext(),
+                        "Введите название колонки",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Отмена", null);
+        builder.show();
+    }
+
+    private void createColumn(String name) {
+        // Здесь должен быть вызов API для создания колонки
+        // Временно добавляем локально
+        int newId = columns.size() + 1;
+        columns.add(new TaskColumn(newId, name, new ArrayList<>()));
+        columnsAdapter.notifyItemInserted(columns.size() - 1);
+    }
+
+    private void showAddTaskDialog(int columnId) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Новая задача");
 
@@ -164,6 +278,10 @@ public class TasksFragment extends Fragment {
         EditText etDescription = dialogView.findViewById(R.id.etTaskDescription);
         AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
         LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
+
+        // Очищаем список выбранных ответственных
+        selectedAssignees.clear();
+        llSelectedAssignees.removeAllViews();
 
         // Настройка автодополнения для ответственных
         ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
@@ -193,17 +311,96 @@ public class TasksFragment extends Fragment {
         });
 
         builder.setPositiveButton("Создать", (dialog, which) -> {
-            String name = etName.getText().toString();
-            String description = etDescription.getText().toString();
+            String name = etName.getText().toString().trim();
+            String description = etDescription.getText().toString().trim();
 
-            if (!name.isEmpty()) {
-                createTask(name, description);
-            } else {
+            if (name.isEmpty()) {
                 Toast.makeText(requireContext(), "Введите название задачи", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            // Получаем ID текущего пользователя (создателя задачи)
+            int creatorId = prefs.getInt("employee_id", -1);
+            if (creatorId == -1) {
+                Toast.makeText(requireContext(), "Ошибка: не удалось определить создателя задачи",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Собираем ID выбранных ответственных
+            List<Integer> assigneeIds = new ArrayList<>();
+            for (Employee assignee : selectedAssignees) {
+                assigneeIds.add(assignee.getEmployeeId());
+            }
+
+            // Создаем JSON объект для отправки
+            JSONObject jsonBody = new JSONObject();
+            try {
+                jsonBody.put("Name", name);
+                jsonBody.put("Description", description);
+                jsonBody.put("ProjectId", projectId);
+                jsonBody.put("ChapterId", columnId); // Используем переданный columnId
+                jsonBody.put("CreatorId", creatorId);
+
+                // Добавляем ответственных, если они есть
+                if (!assigneeIds.isEmpty()) {
+                    jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
+                }
+            } catch (JSONException e) {
+                Toast.makeText(requireContext(), "Ошибка создания задачи", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Показываем прогресс
+            progressBar.setVisibility(View.VISIBLE);
+
+            // Отправляем запрос на создание задачи
+            String token = prefs.getString("jwt_token", null);
+            if (token == null) {
+                Toast.makeText(requireContext(), "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            apiClient.createTask(token, jsonBody, new TaskCreateCallback() {
+                @Override
+                public void onSuccess(Task task) {
+                    requireActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+
+                        // Добавляем задачу в соответствующую колонку
+                        for (TaskColumn column : columns) {
+                            if (column.getId() == task.getChapter()) {
+                                column.getTasks().add(task);
+                                break;
+                            }
+                        }
+
+                        // Обновляем адаптер
+                        columnsAdapter.notifyDataSetChanged();
+
+                        // Очищаем выбранных ответственных
+                        selectedAssignees.clear();
+
+                        Toast.makeText(requireContext(), "Задача создана", Toast.LENGTH_SHORT).show();
+                    });
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    requireActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
         });
 
-        builder.setNegativeButton("Отмена", null);
+        builder.setNegativeButton("Отмена", (dialog, which) -> {
+            // Очищаем выбранных ответственных при отмене
+            selectedAssignees.clear();
+            dialog.dismiss();
+        });
+
         builder.show();
     }
 
@@ -284,7 +481,6 @@ public class TasksFragment extends Fragment {
             public void onSuccess(Task task) {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    adapter.addTask(task);
                     selectedAssignees.clear(); // Очищаем выбранных ответственных
                     Toast.makeText(requireContext(), "Задача создана", Toast.LENGTH_SHORT).show();
                 });
@@ -398,7 +594,6 @@ public class TasksFragment extends Fragment {
             // Заполняем поля
             etName.setText(task.getName());
             etDescription.setText(task.getDescription());
-            tvStatus.setText("Статус: " + adapter.getStatusText(task.getChapter()));
 
             // Настраиваем доступность
             etName.setEnabled(canEditTask);
@@ -565,7 +760,6 @@ public class TasksFragment extends Fragment {
                     for (int i = 0; i < tasks.size(); i++) {
                         if (tasks.get(i).getId() == updatedTask.getId()) {
                             tasks.set(i, updatedTask);
-                            adapter.notifyItemChanged(i);
                             break;
                         }
                     }
@@ -614,7 +808,6 @@ public class TasksFragment extends Fragment {
                     int position = tasks.indexOf(task);
                     if (position != -1) {
                         tasks.remove(position);
-                        adapter.notifyItemRemoved(position);
                     }
                     Toast.makeText(requireContext(), "Задача удалена", Toast.LENGTH_SHORT).show();
                 });

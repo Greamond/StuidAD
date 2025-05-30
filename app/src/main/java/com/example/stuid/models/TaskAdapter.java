@@ -19,11 +19,20 @@ import java.util.List;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     private List<Task> tasks;
+    private OnTaskClickListener taskClickListener;
     private RecyclerView recyclerView;
     private List<Employee> projectParticipants;
     private int currentUserId;
     private ApiClient apiClient;
     private String authToken;
+
+    public interface OnTaskClickListener {
+        void onTaskClick(Task task);
+    }
+
+    public void setOnTaskClickListener(OnTaskClickListener listener) {
+        this.taskClickListener = listener;
+    }
 
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -38,12 +47,12 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         }
     }
 
-    // Обновляем конструктор
-    public TaskAdapter(List<Task> tasks, RecyclerView recyclerView,
-                       List<Employee> participants, int currentUserId,
-                       ApiClient apiClient, String authToken) {
+    public TaskAdapter(List<Task> tasks,
+                       List<Employee> participants,
+                       int currentUserId,
+                       ApiClient apiClient,
+                       String authToken) {
         this.tasks = tasks;
-        this.recyclerView = recyclerView;
         this.projectParticipants = participants;
         this.currentUserId = currentUserId;
         this.apiClient = apiClient;
@@ -79,7 +88,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
         holder.itemView.setOnClickListener(v -> {
             if (taskClickListener != null) {
-                taskClickListener.onTaskClick(position, task);
+                taskClickListener.onTaskClick(task);
             }
         });
     }
@@ -148,15 +157,5 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         tasks.add(0, task);
         notifyItemInserted(0);
         recyclerView.smoothScrollToPosition(0);
-    }
-
-    public interface OnTaskClickListener {
-        void onTaskClick(int position, Task task);
-    }
-
-    private OnTaskClickListener taskClickListener;
-
-    public void setOnTaskClickListener(OnTaskClickListener listener) {
-        this.taskClickListener = listener;
     }
 }

@@ -10,57 +10,57 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ScrollView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true">
+            android:orientation="vertical"
+            android:padding="8dp">
 
-            <LinearLayout
+            <!-- Заголовок и кнопки -->
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginBottom="8dp">
 
-                <RelativeLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp">
+                    android:text="Задачи проекта"
+                    android:textSize="20sp"
+                    android:textStyle="bold"/>
 
-                    <!-- Заголовок -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Задачи"
-                        android:textSize="24sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp"/>
+                <!-- Кнопка добавления колонки -->
+                <ImageButton
+                    android:id="@+id/btnAddColumn"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_toStartOf="@+id/btnAddTask"
+                    android:layout_marginRight="50dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_add"
+                    android:contentDescription="Добавить колонку"
+                    app:tint="@color/blue"/>
 
-                    <ImageButton
-                        android:id="@+id/btnAddTask"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:src="@drawable/ic_add"
-                        android:contentDescription="Добавить"
-                        app:tint="@color/blue"/>
-                </RelativeLayout>
+                <!-- Кнопка добавления задачи -->
+                <ImageButton
+                    android:id="@+id/btnAddTask"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentEnd="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_add"
+                    android:contentDescription="Добавить задачу"
+                    app:tint="@color/blue"/>
+            </RelativeLayout>
 
-                <!-- Голубая разделительная линия -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/blue"
-                    android:layout_marginBottom="16dp"/>
-
-                <!-- Контейнер для списка задач -->
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvTasks"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-        </ScrollView>
+            <!-- Горизонтальный список колонок -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvColumns"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"/>
+        </LinearLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <ProgressBar
