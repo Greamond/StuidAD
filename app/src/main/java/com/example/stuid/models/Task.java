@@ -41,4 +41,8 @@ public class Task {
     public void setAssigneeIds(List<Integer> assigneeIds) { this.assigneeIds = assigneeIds; }
 
     public void setCreatorId(int creatorId) { this.creatorId = creatorId; }
+
+    public void setChapter(int chapter) {
+        this.chapter = chapter;
+    }
 }

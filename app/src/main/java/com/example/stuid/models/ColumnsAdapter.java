@@ -1,5 +1,10 @@
 package com.example.stuid.models;
 
+import android.content.ClipData;
+import android.graphics.Color;
+import android.util.Log;
+import android.util.SparseArray;
+import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -7,11 +12,15 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
+import com.example.stuid.fragments.TasksFragment;
+
+import org.json.JSONException;
 
 import java.util.List;
 
@@ -23,6 +32,12 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
     private int currentUserId;
     private ApiClient apiClient;
     private String authToken;
+    private SparseArray<TaskAdapter> taskAdapters = new SparseArray<>();
+    private OnTaskMovedListener taskMovedListener;
+
+    public interface OnTaskMovedListener {
+        void onTaskMoved(Task task, int newChapterId);
+    }
 
     public interface OnTaskClickListener {
         void onTaskClick(Task task);
@@ -38,7 +53,8 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
                           ApiClient apiClient,
                           String authToken,
                           OnTaskClickListener taskClickListener,
-                          OnAddTaskListener addTaskListener) {
+                          OnAddTaskListener addTaskListener,
+                          OnTaskMovedListener taskMovedListener) {
         this.columns = columns;
         this.projectParticipants = participants;
         this.currentUserId = currentUserId;
@@ -46,6 +62,7 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
         this.authToken = authToken;
         this.taskClickListener = taskClickListener;
         this.addTaskListener = addTaskListener;
+        this.taskMovedListener = taskMovedListener;
     }
 
     @NonNull
@@ -81,16 +98,14 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
         public void bind(TaskColumn column) {
             columnTitle.setText(column.getName());
 
-            // Настройка списка задач в колонке
             tasksRecyclerView.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
 
-            // Создаем TaskAdapter с правильными параметрами
             TaskAdapter taskAdapter = new TaskAdapter(
                     column.getTasks(),
-                    projectParticipants, // нужно добавить это поле в ColumnsAdapter
-                    currentUserId,      // нужно добавить это поле в ColumnsAdapter
-                    apiClient,          // нужно добавить это поле в ColumnsAdapter
-                    authToken           // нужно добавить это поле в ColumnsAdapter
+                    projectParticipants,
+                    currentUserId,
+                    apiClient,
+                    authToken
             );
 
             taskAdapter.setOnTaskClickListener(task -> {
@@ -100,8 +115,48 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
             });
 
             tasksRecyclerView.setAdapter(taskAdapter);
+            taskAdapters.put(column.getId(), taskAdapter);
 
-            // Кнопка добавления задачи в колонку
+            tasksRecyclerView.setOnDragListener((v, event) -> {
+                switch (event.getAction()) {
+                    case DragEvent.ACTION_DRAG_ENTERED:
+                        v.setBackgroundColor(Color.parseColor("#e0e0e0"));
+                        break;
+                    case DragEvent.ACTION_DRAG_EXITED:
+                        v.setBackgroundColor(Color.TRANSPARENT);
+                        break;
+                    case DragEvent.ACTION_DROP:
+                        ClipData dragData = event.getClipData();
+                        if (dragData != null && dragData.getItemCount() > 0) {
+                            Task droppedTask = TasksFragment.getDraggedTask();
+                            if (droppedTask != null) {
+                                int oldChapterId = droppedTask.getChapter();
+                                int newChapterId = column.getId();
+
+                                if (oldChapterId != newChapterId) {
+                                    updateTaskChapter(droppedTask.getId(), newChapterId);
+
+                                    // Перемещаем локально
+                                    for (TaskColumn oldColumn : columns) {
+                                        if (oldColumn.getId() == oldChapterId) {
+                                            oldColumn.getTasks().remove(droppedTask);
+                                            taskAdapters.get(oldChapterId).notifyDataSetChanged();
+                                        }
+                                    }
+
+                                    column.getTasks().add(droppedTask);
+                                    taskAdapter.notifyItemInserted(column.getTasks().size() - 1);
+                                }
+                                TasksFragment.setDraggedTask(null);
+                            }
+                        }
+                        v.setBackgroundColor(Color.TRANSPARENT);
+                        break;
+                }
+                return true;
+            });
+
+            // Кнопка добавления задачи
             addTaskButton.setOnClickListener(v -> {
                 if (addTaskListener != null) {
                     addTaskListener.onAddTask(column.getId());
@@ -109,4 +164,39 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
             });
         }
     }
+
+    public void removeTask(Task taskToRemove) {
+        for (TaskColumn column : columns) {
+            int index = -1;
+            for (int i = 0; i < column.getTasks().size(); i++) {
+                if (column.getTasks().get(i).getId() == taskToRemove.getId()) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index >= 0) {
+                column.getTasks().remove(index);
+                TaskAdapter adapter = taskAdapters.get(column.getId());
+                if (adapter != null) {
+                    adapter.updateTasks(column.getTasks());
+                }
+                return;
+            }
+        }
+    }
+
+    private void updateTaskChapter(int taskId, int newChapterId) {
+        if (taskMovedListener != null) {
+            for (TaskColumn column : columns) {
+                for (Task task : column.getTasks()) {
+                    if (task.getId() == taskId) {
+                        task.setChapter(newChapterId);
+                        taskMovedListener.onTaskMoved(task, newChapterId);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
 }

@@ -19,6 +19,7 @@ import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.FormBody;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -997,5 +998,49 @@ public class ApiClient {
                 }
             }
         });
+    }
+
+    public void updateTaskChapter(String token, int taskId, int chapterId, ProfileUpdateCallback callback) {
+        try {
+            // 1. Формируем JSON-тело
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("ChapterId", chapterId);
+
+            // 2. Создаём запрос
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Tasks/" + taskId + "/status")
+                    .put(RequestBody.create(
+                            jsonBody.toString(),
+                            MediaType.parse("application/json")
+                    ))
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build();
+
+            // 3. Отправляем асинхронно
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure("Network error: " + e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    try {
+                        if (response.isSuccessful()) {
+                            callback.onSuccess();
+                        } else {
+                            String errorBody = response.body() != null ?
+                                    response.body().string() : "Empty error body";
+                            callback.onFailure("Server error: " + response.code() + " - " + errorBody);
+                        }
+                    } catch (IOException e) {
+                        callback.onFailure("Error parsing response: " + e.getMessage());
+                    }
+                }
+            });
+
+        } catch (Exception e) {
+            callback.onFailure("Request creation error: " + e.getMessage());
+        }
     }
 }

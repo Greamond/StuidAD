@@ -2,6 +2,8 @@ package com.example.stuid.fragments;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -25,7 +27,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -34,6 +38,8 @@ import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.EmployeeCallback;
 import com.example.stuid.api.EmployeesCallback;
+import com.example.stuid.api.ParticipantsCallback;
+import com.example.stuid.api.ProfileUpdateCallback;
 import com.example.stuid.api.TaskCreateCallback;
 import com.example.stuid.api.TaskDeleteCallback;
 import com.example.stuid.api.TasksCallback;
@@ -68,6 +74,15 @@ public class TasksFragment extends Fragment {
     private RecyclerView columnsRecyclerView;
     private ColumnsAdapter columnsAdapter;
     private List<TaskColumn> columns = new ArrayList<>();
+    private static Task draggedTask;
+
+    public static void setDraggedTask(Task task) {
+        draggedTask = task;
+    }
+
+    public static Task getDraggedTask() {
+        return draggedTask;
+    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -103,7 +118,11 @@ public class TasksFragment extends Fragment {
                 apiClient,
                 prefs.getString("jwt_token", null),
                 this::onTaskClicked,
-                this::onAddTaskClicked
+                this::onAddTaskClicked,
+                (task, newChapterId) -> {
+                    // Здесь отправляем обновление на сервер
+                    updateTaskChapter(task.getId(), newChapterId);
+                }
         );
         columnsRecyclerView.setAdapter(columnsAdapter);
 
@@ -229,7 +248,14 @@ public class TasksFragment extends Fragment {
     }
 
     private void onTaskClicked(Task task) {
-        checkEditPermission(task, () -> showTaskDialog(task));
+        checkEditPermission(task, () -> {
+            if (canEditTask) {
+                draggedTask = task;
+                showTaskDialog(task);
+            } else {
+                Toast.makeText(requireContext(), "Нет прав на редактирование", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void onAddTaskClicked(int columnId) {
@@ -319,7 +345,6 @@ public class TasksFragment extends Fragment {
                 return;
             }
 
-            // Получаем ID текущего пользователя (создателя задачи)
             int creatorId = prefs.getInt("employee_id", -1);
             if (creatorId == -1) {
                 Toast.makeText(requireContext(), "Ошибка: не удалось определить создателя задачи",
@@ -327,13 +352,11 @@ public class TasksFragment extends Fragment {
                 return;
             }
 
-            // Собираем ID выбранных ответственных
             List<Integer> assigneeIds = new ArrayList<>();
             for (Employee assignee : selectedAssignees) {
                 assigneeIds.add(assignee.getEmployeeId());
             }
 
-            // Создаем JSON объект для отправки
             JSONObject jsonBody = new JSONObject();
             try {
                 jsonBody.put("Name", name);
@@ -342,7 +365,6 @@ public class TasksFragment extends Fragment {
                 jsonBody.put("ChapterId", columnId); // Используем переданный columnId
                 jsonBody.put("CreatorId", creatorId);
 
-                // Добавляем ответственных, если они есть
                 if (!assigneeIds.isEmpty()) {
                     jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
                 }
@@ -351,10 +373,8 @@ public class TasksFragment extends Fragment {
                 return;
             }
 
-            // Показываем прогресс
             progressBar.setVisibility(View.VISIBLE);
 
-            // Отправляем запрос на создание задачи
             String token = prefs.getString("jwt_token", null);
             if (token == null) {
                 Toast.makeText(requireContext(), "Ошибка авторизации", Toast.LENGTH_SHORT).show();
@@ -367,20 +387,16 @@ public class TasksFragment extends Fragment {
                     requireActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
 
-                        // Добавляем задачу в соответствующую колонку
+                        // Находим нужную колонку и добавляем задачу
                         for (TaskColumn column : columns) {
                             if (column.getId() == task.getChapter()) {
                                 column.getTasks().add(task);
+                                columnsAdapter.notifyItemChanged(columns.indexOf(column));
                                 break;
                             }
                         }
 
-                        // Обновляем адаптер
-                        columnsAdapter.notifyDataSetChanged();
-
-                        // Очищаем выбранных ответственных
                         selectedAssignees.clear();
-
                         Toast.makeText(requireContext(), "Задача создана", Toast.LENGTH_SHORT).show();
                     });
                 }
@@ -440,58 +456,6 @@ public class TasksFragment extends Fragment {
             @Override
             public void onFailure(String error) {
                 Log.e("TasksFragment", "Error loading participants: " + error);
-            }
-        });
-    }
-
-    private void createTask(String name, String description) {
-        String token = prefs.getString("jwt_token", null);
-        if (token == null) return;
-
-        List<Integer> assigneeIds = new ArrayList<>();
-        for (Employee assignee : selectedAssignees) {
-            assigneeIds.add(assignee.getEmployeeId());
-        }
-
-        // Получаем ID текущего пользователя
-        int creatorId = prefs.getInt("employee_id", -1);
-        if (creatorId == -1) {
-            Toast.makeText(requireContext(), "Ошибка: не удалось определить создателя задачи",
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Создаем JSON объект для отправки
-        JSONObject jsonBody = new JSONObject();
-        try {
-            jsonBody.put("Name", name);
-            jsonBody.put("Description", description);
-            jsonBody.put("ProjectId", projectId);
-            jsonBody.put("CreatorId", creatorId); // Добавляем creatorId
-            jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
-        } catch (JSONException e) {
-            Toast.makeText(requireContext(), "Ошибка создания задачи", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        progressBar.setVisibility(View.VISIBLE);
-
-        apiClient.createTask(token, jsonBody, new TaskCreateCallback() {
-            @Override
-            public void onSuccess(Task task) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    selectedAssignees.clear(); // Очищаем выбранных ответственных
-                    Toast.makeText(requireContext(), "Задача создана", Toast.LENGTH_SHORT).show();
-                });
-            }
-
-            @Override
-            public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
-                });
             }
         });
     }
@@ -735,11 +699,22 @@ public class TasksFragment extends Fragment {
             assigneeIds.add(assignee.getEmployeeId());
         }
 
+        // Находим текущую колонку задачи
+        int currentChapterId = 1; // значение по умолчанию
+        for (TaskColumn column : columns) {
+            for (Task task : column.getTasks()) {
+                if (task.getId() == taskId) {
+                    currentChapterId = column.getId();
+                    break;
+                }
+            }
+        }
+
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("Name", name);
             jsonBody.put("Description", description);
-            jsonBody.put("ChapterId", 1);
+            jsonBody.put("ChapterId", currentChapterId); // Используем текущий ChapterId
             jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
         } catch (JSONException e) {
             Toast.makeText(requireContext(), "Ошибка формирования запроса",
@@ -757,10 +732,12 @@ public class TasksFragment extends Fragment {
                     selectedAssignees.clear();
 
                     // Обновляем задачу в списке
-                    for (int i = 0; i < tasks.size(); i++) {
-                        if (tasks.get(i).getId() == updatedTask.getId()) {
-                            tasks.set(i, updatedTask);
-                            break;
+                    for (TaskColumn column : columns) {
+                        for (int i = 0; i < column.getTasks().size(); i++) {
+                            if (column.getTasks().get(i).getId() == updatedTask.getId()) {
+                                column.getTasks().set(i, updatedTask);
+                                break;
+                            }
                         }
                     }
 
@@ -804,11 +781,10 @@ public class TasksFragment extends Fragment {
             public void onSuccess() {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    // Удаляем задачу из списка
-                    int position = tasks.indexOf(task);
-                    if (position != -1) {
-                        tasks.remove(position);
-                    }
+
+                    // Удаляем задачу из адаптера
+                    columnsAdapter.removeTask(task);
+
                     Toast.makeText(requireContext(), "Задача удалена", Toast.LENGTH_SHORT).show();
                 });
             }
@@ -821,5 +797,35 @@ public class TasksFragment extends Fragment {
                 });
             }
         });
+    }
+
+    private void updateTaskChapter(int taskId, int chapterId) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            showToast("Authorization required");
+            return;
+        }
+
+        apiClient.updateTaskChapter(token, taskId, chapterId, new ProfileUpdateCallback() {
+            @Override
+            public void onSuccess() {
+                requireActivity().runOnUiThread(() -> {
+                    showToast("Chapter updated successfully");
+                    Log.e("Server", "Chapter updated successfully");
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    showToast("Update failed: " + error);
+                    Log.e("Server","Update failed: " + error);
+                });
+            }
+        });
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
     }
 }

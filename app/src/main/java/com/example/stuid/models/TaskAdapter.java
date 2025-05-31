@@ -1,11 +1,15 @@
 package com.example.stuid.models;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipDescription;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
@@ -14,6 +18,7 @@ import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.CreatorNameCallback;
 import com.example.stuid.api.EmployeeCallback;
+import com.example.stuid.fragments.TasksFragment;
 
 import java.util.List;
 
@@ -37,6 +42,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public TextView tvNumber, tvName, tvCreator, tvChapter;
+        private Task task;
 
         public ViewHolder(View itemView) {
             super(itemView);
@@ -44,6 +50,16 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             tvName = itemView.findViewById(R.id.tvTaskName);
             tvCreator = itemView.findViewById(R.id.tvTaskCreator);
             tvChapter = itemView.findViewById(R.id.tvTaskChapter);
+        }
+
+        // Метод для получения задачи
+        public Task getTask() {
+            return task;
+        }
+
+        // Метод для установки задачи
+        public void bind(Task task) {
+            this.task = task;
         }
     }
 
@@ -69,6 +85,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         Task task = tasks.get(position);
+        holder.bind(task); // Теперь используем bind
+
         holder.tvNumber.setText("№" + task.getId());
         holder.tvName.setText(task.getName());
         holder.tvChapter.setText("Статус: " + getStatusText(task.getChapter()));
@@ -85,6 +103,15 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             }
         });
 
+        holder.itemView.setOnLongClickListener(v -> {
+            TasksFragment.setDraggedTask(task);
+
+            ClipData.Item item = new ClipData.Item((CharSequence) null);
+            ClipData dragData = new ClipData("task", new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
+            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(holder.itemView);
+            holder.itemView.startDrag(dragData, shadowBuilder, null, 0);
+            return true;
+        });
 
         holder.itemView.setOnClickListener(v -> {
             if (taskClickListener != null) {
@@ -143,7 +170,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         switch (status) {
             case 1: return "Новая";
             case 2: return "В работе";
-            case 3: return "Завершена";
+            case 3: return "На проверке";
+            case 4: return "Завершена";
             default: return "Неизвестно";
         }
     }
@@ -153,9 +181,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         return tasks != null ? tasks.size() : 0;
     }
 
-    public void addTask(Task task) {
-        tasks.add(0, task);
-        notifyItemInserted(0);
-        recyclerView.smoothScrollToPosition(0);
+    public void updateTasks(List<Task> newTasks) {
+        this.tasks = newTasks;
+        notifyDataSetChanged();
     }
 }
