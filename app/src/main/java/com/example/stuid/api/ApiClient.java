@@ -8,6 +8,7 @@ import android.util.Log;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
 import com.example.stuid.models.Task;
+import com.example.stuid.models.TaskColumn;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -233,60 +234,6 @@ public class ApiClient {
                         employees.add(employee);
                     }
                     callback.onSuccess(employees);
-                } catch (Exception e) {
-                    callback.onFailure("Error parsing response: " + e.getMessage());
-                }
-            }
-        });
-    }
-
-    public void getProjects(String authToken, final ProjectsCallback callback) {
-        if (authToken == null || authToken.isEmpty()) {
-            callback.onFailure("Authorization token is missing");
-            return;
-        }
-
-        String PROJECTS_URL = BASE_URL + "Projects";
-
-        Request request = new Request.Builder()
-                .url(PROJECTS_URL)
-                .addHeader("Authorization", "Bearer " + authToken)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                callback.onFailure("Network error: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.code() == 401) {
-                    callback.onFailure("Session expired. Please login again");
-                    return;
-                }
-
-                if (!response.isSuccessful()) {
-                    callback.onFailure("Server error: " + response.code());
-                    return;
-                }
-
-                try {
-                    String responseData = response.body().string();
-                    JSONArray jsonArray = new JSONArray(responseData);
-                    List<Project> projects = new ArrayList<>();
-
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject json = jsonArray.getJSONObject(i);
-                        projects.add(new Project(
-                                json.getInt("Id"),
-                                json.getString("Name"),
-                                json.getString("Description"),
-                                json.getBoolean("IsPublic"),
-                                json.getInt("Creator")
-                        ));
-                    }
-                    callback.onSuccess(projects);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }
@@ -792,6 +739,7 @@ public class ApiClient {
                                 json.getInt("Chapter"),
                                 json.getInt("CreatorId")
                         );
+                        task.setPosition(json.getInt("Position"));
                         tasks.add(task);
                     }
                     callback.onSuccess(tasks);
@@ -1042,5 +990,141 @@ public class ApiClient {
         } catch (Exception e) {
             callback.onFailure("Request creation error: " + e.getMessage());
         }
+    }
+
+    public void updateTaskOrder(String token, int projectId, int columnId, List<Task> orderedTasks, ParticipantsCallback callback) {
+        JSONObject json = new JSONObject();
+        try {
+            json.put("projectId", projectId);
+            json.put("columnId", columnId);
+
+            JSONArray taskArray = new JSONArray();
+            for (int i = 0; i < orderedTasks.size(); i++) {
+                JSONObject taskJson = new JSONObject();
+                taskJson.put("taskId", orderedTasks.get(i).getId());
+                taskJson.put("position", i);
+                taskArray.put(taskJson);
+            }
+            json.put("taskOrder", taskArray);
+
+            RequestBody body = RequestBody.create(
+                    MediaType.get("application/json; charset=utf-8"),
+                    json.toString()
+            );
+
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Tasks/update-order")
+                    .put(body)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure(e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (response.isSuccessful()) {
+                        callback.onSuccess();
+                    } else {
+                        callback.onFailure("Server error: " + response.code());
+                    }
+                }
+            });
+
+        } catch (JSONException e) {
+            callback.onFailure("JSON error: " + e.getMessage());
+        }
+    }
+
+    public void getColumnsForProject(String token, int projectId, ColumnsCallback callback) {
+        String url = BASE_URL + "ChaptersTask/project/" + projectId;
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<TaskColumn> columns = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        int id = json.getInt("Id");
+                        String name = json.getString("Name");
+                        columns.add(new TaskColumn(id,projectId, name, new ArrayList<>()));
+                    }
+
+                    callback.onSuccess(columns);
+                } catch (JSONException e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void createColumn(String token, String name, int projectId, ColumnCreateCallback callback) {
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("Name", name);
+            jsonBody.put("ProjectId", projectId);
+        } catch (JSONException e) {
+            callback.onFailure("JSON error: " + e.getMessage());
+            return;
+        }
+
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.get("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "ChaptersTask")
+                .post(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    int id = json.getInt("Id");
+                    TaskColumn column = new TaskColumn(id,projectId, name, new ArrayList<>());
+                    callback.onSuccess(column);
+                } catch (JSONException e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
     }
 }

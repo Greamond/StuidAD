@@ -6,12 +6,15 @@ import android.content.ClipDescription;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.stuid.R;
@@ -30,6 +33,11 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     private int currentUserId;
     private ApiClient apiClient;
     private String authToken;
+    private ItemTouchHelper itemTouchHelper;
+
+    public void setItemTouchHelper(ItemTouchHelper helper) {
+        this.itemTouchHelper = helper;
+    }
 
     public interface OnTaskClickListener {
         void onTaskClick(Task task);
@@ -67,12 +75,14 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
                        List<Employee> participants,
                        int currentUserId,
                        ApiClient apiClient,
-                       String authToken) {
+                       String authToken,
+                       ItemTouchHelper itemTouchHelper) { // Новый конструктор
         this.tasks = tasks;
         this.projectParticipants = participants;
         this.currentUserId = currentUserId;
         this.apiClient = apiClient;
         this.authToken = authToken;
+        this.itemTouchHelper = itemTouchHelper;
     }
 
     @Override
@@ -85,7 +95,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         Task task = tasks.get(position);
-        holder.bind(task); // Теперь используем bind
+        holder.bind(task);
 
         holder.tvNumber.setText("№" + task.getId());
         holder.tvName.setText(task.getName());
@@ -117,6 +127,17 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             if (taskClickListener != null) {
                 taskClickListener.onTaskClick(task);
             }
+        });
+
+        holder.itemView.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (itemTouchHelper != null) {
+                    itemTouchHelper.startDrag(holder);
+                } else {
+                    Log.e("TaskAdapter", "ItemTouchHelper is null");
+                }
+            }
+            return false;
         });
     }
 
@@ -182,7 +203,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     }
 
     public void updateTasks(List<Task> newTasks) {
-        this.tasks = newTasks;
+        this.tasks.clear();
+        this.tasks.addAll(newTasks);
         notifyDataSetChanged();
     }
 }

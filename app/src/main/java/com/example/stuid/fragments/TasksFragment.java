@@ -36,6 +36,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
+import com.example.stuid.api.ColumnCreateCallback;
+import com.example.stuid.api.ColumnsCallback;
 import com.example.stuid.api.EmployeeCallback;
 import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.ParticipantsCallback;
@@ -54,7 +56,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class TasksFragment extends Fragment {
@@ -119,18 +125,12 @@ public class TasksFragment extends Fragment {
                 prefs.getString("jwt_token", null),
                 this::onTaskClicked,
                 this::onAddTaskClicked,
-                (task, newChapterId) -> {
-                    // Здесь отправляем обновление на сервер
-                    updateTaskChapter(task.getId(), newChapterId);
-                }
-        );
+                (task, newChapterId) -> updateTaskChapter(task.getId(), newChapterId),
+                this);
         columnsRecyclerView.setAdapter(columnsAdapter);
 
         // Кнопка добавления колонки
         view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showAddColumnDialog());
-
-        // Кнопка добавления задачи (глобальная)
-        view.findViewById(R.id.btnAddTask).setOnClickListener(v -> showAddTaskDialog(1));
 
         // Обновление данных
         swipeRefresh.setOnRefreshListener(this::refreshData);
@@ -146,9 +146,6 @@ public class TasksFragment extends Fragment {
         // Загрузка задач
         loadTasks();
         loadProjectParticipants();
-
-        // Кнопка добавления задачи
-        view.findViewById(R.id.btnAddTask).setOnClickListener(v -> showAddTaskDialog(1));
     }
 
     private void loadInitialData() {
@@ -195,16 +192,27 @@ public class TasksFragment extends Fragment {
     }
 
     private void loadColumns() {
-        // Здесь должна быть загрузка колонок с сервера
-        // Временно создаем стандартные колонки
-        columns.clear();
-        columns.add(new TaskColumn(1, "Новые", new ArrayList<>()));
-        columns.add(new TaskColumn(2, "В работе", new ArrayList<>()));
-        columns.add(new TaskColumn(3, "На проверке", new ArrayList<>()));
-        columns.add(new TaskColumn(4, "Завершённые", new ArrayList<>()));
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
 
-        columnsAdapter.notifyDataSetChanged();
-        loadTasks();
+        apiClient.getColumnsForProject(token, projectId, new ColumnsCallback() {
+            @Override
+            public void onSuccess(List<TaskColumn> serverColumns) {
+                requireActivity().runOnUiThread(() -> {
+                    columns.clear();
+                    columns.addAll(serverColumns);
+                    columnsAdapter.notifyDataSetChanged();
+                    loadTasks();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "Ошибка загрузки колонок: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void loadTasks() {
@@ -221,13 +229,16 @@ public class TasksFragment extends Fragment {
                     }
 
                     // Распределяем задачи по колонкам
+                    Map<Integer, List<Task>> tasksByColumn = new HashMap<>();
                     for (Task task : loadedTasks) {
-                        for (TaskColumn column : columns) {
-                            if (column.getId() == task.getChapter()) {
-                                column.getTasks().add(task);
-                                break;
-                            }
-                        }
+                        tasksByColumn.computeIfAbsent(task.getChapter(), k -> new ArrayList<>()).add(task);
+                    }
+
+                    // Сортируем каждую группу по position
+                    for (TaskColumn column : columns) {
+                        List<Task> columnTasks = tasksByColumn.getOrDefault(column.getId(), new ArrayList<>());
+                        Collections.sort(columnTasks, Comparator.comparingInt(Task::getPosition));
+                        column.setTasks(columnTasks);
                     }
 
                     columnsAdapter.notifyDataSetChanged();
@@ -239,9 +250,7 @@ public class TasksFragment extends Fragment {
             public void onFailure(String error) {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),
-                            "Ошибка загрузки задач: " + error,
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(),"Ошибка загрузки задач: " + error,Toast.LENGTH_SHORT).show();
                 });
             }
         });
@@ -265,7 +274,6 @@ public class TasksFragment extends Fragment {
     private void showAddColumnDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Создать новую колонку");
-
         final EditText input = new EditText(requireContext());
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         builder.setView(input);
@@ -275,21 +283,43 @@ public class TasksFragment extends Fragment {
             if (!columnName.isEmpty()) {
                 createColumn(columnName);
             } else {
-                Toast.makeText(requireContext(),
-                        "Введите название колонки",
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Введите название колонки", Toast.LENGTH_SHORT).show();
             }
         });
+
         builder.setNegativeButton("Отмена", null);
         builder.show();
     }
 
     private void createColumn(String name) {
-        // Здесь должен быть вызов API для создания колонки
-        // Временно добавляем локально
-        int newId = columns.size() + 1;
-        columns.add(new TaskColumn(newId, name, new ArrayList<>()));
-        columnsAdapter.notifyItemInserted(columns.size() - 1);
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            Toast.makeText(requireContext(), "Не авторизован", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Убедитесь, что projectId доступен в этом контексте
+        if (projectId == -1) {
+            Toast.makeText(requireContext(), "Неверный проект", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        apiClient.createColumn(token, name, projectId, new ColumnCreateCallback() {
+            @Override
+            public void onSuccess(TaskColumn column) {
+                requireActivity().runOnUiThread(() -> {
+                    columns.add(column);
+                    columnsAdapter.notifyItemInserted(columns.size() - 1);
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "Ошибка создания колонки: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void showAddTaskDialog(int columnId) {
@@ -827,5 +857,22 @@ public class TasksFragment extends Fragment {
 
     private void showToast(String message) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+    }
+
+    public void sendNewOrderToServer(int projectId, int columnId, List<Task> orderedTasks) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null || projectId == -1) return;
+
+        apiClient.updateTaskOrder(token, projectId, columnId, orderedTasks, new ParticipantsCallback() {
+            @Override
+            public void onSuccess() {
+                Log.d("TasksFragment", "Порядок задач сохранён");
+            }
+
+            @Override
+            public void onFailure(String error) {
+                Log.e("TasksFragment", "Ошибка сохранения порядка: " + error);
+            }
+        });
     }
 }

@@ -22,6 +22,8 @@ import com.example.stuid.fragments.TasksFragment;
 
 import org.json.JSONException;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnViewHolder> {
@@ -34,6 +36,8 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
     private String authToken;
     private SparseArray<TaskAdapter> taskAdapters = new SparseArray<>();
     private OnTaskMovedListener taskMovedListener;
+    private SparseArray<ItemTouchHelper> itemTouchHelpers = new SparseArray<>();
+    private final TasksFragment tasksFragment;
 
     public interface OnTaskMovedListener {
         void onTaskMoved(Task task, int newChapterId);
@@ -54,7 +58,8 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
                           String authToken,
                           OnTaskClickListener taskClickListener,
                           OnAddTaskListener addTaskListener,
-                          OnTaskMovedListener taskMovedListener) {
+                          OnTaskMovedListener taskMovedListener,
+                          TasksFragment fragment) {
         this.columns = columns;
         this.projectParticipants = participants;
         this.currentUserId = currentUserId;
@@ -63,6 +68,7 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
         this.taskClickListener = taskClickListener;
         this.addTaskListener = addTaskListener;
         this.taskMovedListener = taskMovedListener;
+        this.tasksFragment = fragment;
     }
 
     @NonNull
@@ -99,14 +105,28 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
             columnTitle.setText(column.getName());
 
             tasksRecyclerView.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
+            tasksRecyclerView.setTag(column);
+
+            ItemTouchHelper helperTask = new ItemTouchHelper(createTaskTouchCallback(column));
+            helperTask.attachToRecyclerView(tasksRecyclerView);
 
             TaskAdapter taskAdapter = new TaskAdapter(
                     column.getTasks(),
                     projectParticipants,
                     currentUserId,
                     apiClient,
-                    authToken
+                    authToken,
+                    helperTask
             );
+
+            ItemTouchHelper helper = itemTouchHelpers.get(column.getId());
+            if (helper == null) {
+                helper = new ItemTouchHelper(createTaskTouchCallback(column));
+                itemTouchHelpers.put(column.getId(), helper);
+            }
+
+            helper.attachToRecyclerView(tasksRecyclerView);
+            tasksRecyclerView.setAdapter(taskAdapter);
 
             taskAdapter.setOnTaskClickListener(task -> {
                 if (taskClickListener != null) {
@@ -163,6 +183,33 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
                 }
             });
         }
+    }
+
+    private ItemTouchHelper.SimpleCallback createTaskTouchCallback(TaskColumn column) {
+        return new ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                int from = viewHolder.getAdapterPosition();
+                int to = target.getAdapterPosition();
+
+                List<Task> tasks = column.getTasks();
+                Collections.swap(tasks, from, to);
+                TaskAdapter adapter = (TaskAdapter) recyclerView.getAdapter();
+                adapter.updateTasks(new ArrayList<>(tasks));
+
+                // Отправляем новый порядок на сервер
+                tasksFragment.sendNewOrderToServer(column.getProjectId(), column.getId(), tasks);
+
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                // Не используется
+            }
+        };
     }
 
     public void removeTask(Task taskToRemove) {

@@ -35,22 +35,9 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:layout_alignParentEnd="true"
-                    android:layout_toStartOf="@+id/btnAddTask"
-                    android:layout_marginRight="50dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_add"
                     android:contentDescription="Добавить колонку"
-                    app:tint="@color/blue"/>
-
-                <!-- Кнопка добавления задачи -->
-                <ImageButton
-                    android:id="@+id/btnAddTask"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_alignParentEnd="true"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_add"
-                    android:contentDescription="Добавить задачу"
                     app:tint="@color/blue"/>
             </RelativeLayout>
 
