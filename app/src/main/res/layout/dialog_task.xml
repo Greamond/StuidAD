@@ -31,13 +31,6 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
-        android:id="@+id/tvTaskStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="16sp"/>
-
-    <TextView
         android:id="@+id/tvCreator"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

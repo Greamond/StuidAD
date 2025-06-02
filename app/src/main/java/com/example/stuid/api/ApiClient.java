@@ -932,7 +932,7 @@ public class ApiClient {
                     JSONObject json = new JSONObject(responseData);
 
                     Employee employee = new Employee();
-                    employee.setEmployeeId(json.getInt("EmployeeId"));
+                    employee.setEmployeeId(json.getInt("Id"));
                     employee.setLastName(json.getString("LastName"));
                     employee.setFirstName(json.getString("FirstName"));
                     employee.setMiddleName(json.getString("MiddleName"));

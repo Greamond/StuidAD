@@ -116,6 +116,7 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
                     currentUserId,
                     apiClient,
                     authToken,
+                    tasksRecyclerView,
                     helperTask
             );
 

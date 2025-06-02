@@ -144,8 +144,8 @@ public class TasksFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         // Загрузка задач
-        loadTasks();
         loadProjectParticipants();
+        loadTasks();
     }
 
     private void loadInitialData() {
@@ -570,8 +570,6 @@ public class TasksFragment extends Fragment {
     private void showTaskDialog(Task task) {
         // Сначала проверяем права
         checkEditPermission(task, () -> {
-            // Теперь canEditTask установлен правильно
-
             AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
             builder.setTitle(task.getName());
 
@@ -581,7 +579,6 @@ public class TasksFragment extends Fragment {
 
             EditText etName = dialogView.findViewById(R.id.etTaskName);
             EditText etDescription = dialogView.findViewById(R.id.etTaskDescription);
-            TextView tvStatus = dialogView.findViewById(R.id.tvTaskStatus);
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
 

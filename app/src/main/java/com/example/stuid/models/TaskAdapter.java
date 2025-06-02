@@ -35,10 +35,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     private String authToken;
     private ItemTouchHelper itemTouchHelper;
 
-    public void setItemTouchHelper(ItemTouchHelper helper) {
-        this.itemTouchHelper = helper;
-    }
-
     public interface OnTaskClickListener {
         void onTaskClick(Task task);
     }
@@ -49,7 +45,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView tvNumber, tvName, tvCreator, tvChapter;
+        public TextView tvNumber, tvName, tvCreator;
         private Task task;
 
         public ViewHolder(View itemView) {
@@ -57,7 +53,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             tvNumber = itemView.findViewById(R.id.tvTaskNumber);
             tvName = itemView.findViewById(R.id.tvTaskName);
             tvCreator = itemView.findViewById(R.id.tvTaskCreator);
-            tvChapter = itemView.findViewById(R.id.tvTaskChapter);
         }
 
         // Метод для получения задачи
@@ -76,12 +71,14 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
                        int currentUserId,
                        ApiClient apiClient,
                        String authToken,
-                       ItemTouchHelper itemTouchHelper) { // Новый конструктор
+                       RecyclerView recyclerView,
+                       ItemTouchHelper itemTouchHelper) {
         this.tasks = tasks;
         this.projectParticipants = participants;
         this.currentUserId = currentUserId;
         this.apiClient = apiClient;
         this.authToken = authToken;
+        this.recyclerView = recyclerView;
         this.itemTouchHelper = itemTouchHelper;
     }
 
@@ -99,8 +96,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
         holder.tvNumber.setText("№" + task.getId());
         holder.tvName.setText(task.getName());
-        holder.tvChapter.setText("Статус: " + getStatusText(task.getChapter()));
 
+        holder.tvCreator.setText("Создатель: загрузка...");
         getCreatorName(task.getCreatorId(), new CreatorNameCallback() {
             @Override
             public void onNameLoaded(String creatorName) {
