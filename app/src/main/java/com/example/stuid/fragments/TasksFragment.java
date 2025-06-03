@@ -139,15 +139,6 @@ public class TasksFragment extends Fragment {
         return view;
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        // Загрузка задач
-        loadProjectParticipants();
-        loadTasks();
-    }
-
     private void loadInitialData() {
         progressBar.setVisibility(View.VISIBLE);
 

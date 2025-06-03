@@ -91,14 +91,15 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
-        progressBar.setVisibility(View.VISIBLE);
+        if (!swipeRefresh.isRefreshing()) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
 
         // Сначала загружаем сотрудников, затем проекты
         apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
                 requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
                     adapter.setEmployees(employees);
                     loadUserProjects(); // Теперь загружаем проекты
                 });
@@ -107,7 +108,6 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             @Override
             public void onFailure(String error) {
                 requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(requireContext(),
                             "Ошибка загрузки сотрудников: " + error,
                             Toast.LENGTH_SHORT).show();
@@ -124,11 +124,6 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         if (token == null || currentUserId == -1) {
             redirectToLogin();
             return;
-        }
-
-        // Показываем прогресс-бар, если это не SwipeRefresh
-        if (!swipeRefresh.isRefreshing()) {
-            progressBar.setVisibility(View.VISIBLE);
         }
 
         apiClient.getUserProjects(token, currentUserId, new ProjectsCallback() {
