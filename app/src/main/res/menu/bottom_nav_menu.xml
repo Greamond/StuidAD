@@ -16,7 +16,7 @@
         android:title="Проекты" />
 
     <item
-        android:id="@+id/tasksFragment"
+        android:id="@+id/myTasksFragment"
         android:icon="@drawable/ic_tasks"
         android:title="Задачи" />
 </menu>

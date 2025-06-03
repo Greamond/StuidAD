@@ -1618,4 +1618,49 @@ public class ApiClient {
             }
         });
     }
+
+    public void getTasksByAssignee(String token, int assigneeId, TasksCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Tasks/assignee/" + assigneeId)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Task> tasks = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        Task task = new Task(
+                                json.getInt("Id"),
+                                json.getInt("ProjectId"),
+                                json.getString("Name"),
+                                json.getString("Description"),
+                                json.getInt("Chapter"),
+                                json.getInt("CreatorId")
+                        );
+                        tasks.add(task);
+                    }
+
+                    callback.onSuccess(tasks);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
 }

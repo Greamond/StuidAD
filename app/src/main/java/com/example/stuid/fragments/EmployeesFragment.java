@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -34,6 +35,8 @@ public class EmployeesFragment extends Fragment {
     private ProgressBar progressBar;
     private ApiClient apiClient;
     private SharedPreferences prefs;
+    private SearchView searchView;
+    private List<Employee> allEmployees = new ArrayList<>();
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -44,6 +47,9 @@ public class EmployeesFragment extends Fragment {
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
         progressBar = view.findViewById(R.id.progressBar);
         recyclerView = view.findViewById(R.id.rvEmployees);
+
+        searchView = view.findViewById(R.id.searchView);
+        setupSearchView();
 
         // Настройка RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -64,6 +70,47 @@ public class EmployeesFragment extends Fragment {
         return view;
     }
 
+    private void setupSearchView() {
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                filterEmployees(newText);
+                return true;
+            }
+        });
+    }
+
+    private void filterEmployees(String query) {
+        List<Employee> filteredList = new ArrayList<>();
+
+        if (query.isEmpty()) {
+            filteredList.addAll(allEmployees);
+        } else {
+            String searchPattern = query.toLowerCase().trim();
+            for (Employee employee : allEmployees) {
+                if (employee.getFullName().toLowerCase().contains(searchPattern)) {
+                    filteredList.add(employee);
+                }
+            }
+        }
+
+        adapter.updateEmployees(filteredList);
+
+        // Показываем сообщение, если ничего не найдено
+        if (filteredList.isEmpty()) {
+            showEmptySearchState();
+        }
+    }
+
+    private void showEmptySearchState() {
+        Toast.makeText(requireContext(), "Сотрудники не найдены", Toast.LENGTH_SHORT).show();
+    }
+
     private void loadInitialData() {
         progressBar.setVisibility(View.VISIBLE);
         loadEmployees();
@@ -82,6 +129,10 @@ public class EmployeesFragment extends Fragment {
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> {
                         hideLoaders();
+                        allEmployees.clear();
+                        allEmployees.addAll(employees);
+                        filterEmployees(searchView.getQuery().toString());
+
                         if (employees.isEmpty()) {
                             showEmptyState();
                         } else {

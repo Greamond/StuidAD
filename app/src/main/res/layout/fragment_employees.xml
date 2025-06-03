@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
@@ -32,7 +33,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="@color/blue"
-                    android:layout_marginBottom="16dp"/>
+                    android:layout_marginBottom="12dp"/>
+
+                <androidx.appcompat.widget.SearchView
+                    android:id="@+id/searchView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:queryHint="Поиск сотрудников..."/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvEmployees"

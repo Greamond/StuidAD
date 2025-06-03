@@ -30,6 +30,13 @@
             app:destination="@id/tasksDetailFragment" />
     </fragment>
 
+    <fragment
+        android:id="@+id/myTasksFragment"
+        android:name="com.example.stuid.fragments.MyTasksFragment"
+        android:label="Проекты"
+        tools:layout="@layout/fragment_my_tasks">
+    </fragment>
+
     <!-- Отдельный фрагмент для задач (не в BottomNavigation) -->
     <fragment
         android:id="@+id/tasksDetailFragment"
