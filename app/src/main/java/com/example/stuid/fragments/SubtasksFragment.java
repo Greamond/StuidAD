@@ -141,7 +141,7 @@ public class SubtasksFragment extends Fragment {
         columnsRecyclerView.setAdapter(columnsAdapter);
 
         // Кнопка добавления колонки
-        view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showAddColumnDialog());
+        view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showAddColumnDialog(null));
 
         // Обновление данных
         swipeRefresh.setOnRefreshListener(this::refreshData);
@@ -284,24 +284,123 @@ public class SubtasksFragment extends Fragment {
         showAddTaskDialog(columnId);
     }
 
-    private void showAddColumnDialog() {
+    public void showAddColumnDialog(SubtaskColumn columnToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Создать новую колонку");
+        builder.setTitle(columnToEdit == null ? "Создать колонку" : "Редактировать колонку");
+
         final EditText input = new EditText(requireContext());
         input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setText(columnToEdit != null ? columnToEdit.getName() : "");
         builder.setView(input);
 
-        builder.setPositiveButton("Создать", (dialog, which) -> {
-            String columnName = input.getText().toString().trim();
-            if (!columnName.isEmpty()) {
-                createSubtaskColumn(columnName);
+        builder.setPositiveButton(columnToEdit == null ? "Создать" : "Сохранить", (dialog, which) -> {
+            String name = input.getText().toString().trim();
+            if (!name.isEmpty()) {
+                if (columnToEdit == null) {
+                    createSubtaskColumn(name);
+                } else {
+                    updateSubtaskColumn(columnToEdit, name);
+                }
             } else {
                 Toast.makeText(requireContext(), "Введите название колонки", Toast.LENGTH_SHORT).show();
             }
         });
 
-        builder.setNegativeButton("Отмена", null);
+        // Кнопка удаления (только при редактировании)
+        if (columnToEdit != null) {
+            builder.setNegativeButton("Удалить", (dialog, which) -> {
+                showDeleteColumnConfirmationDialog(columnToEdit);
+            });
+        }
+
+        builder.setNeutralButton("Отмена", null);
         builder.show();
+    }
+
+    private void showDeleteColumnConfirmationDialog(SubtaskColumn column) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Подтвердите удаление")
+                .setMessage("Вы уверены, что хотите удалить колонку \"" + column.getName() + "\"?")
+                .setPositiveButton("Удалить", (dialog, which) -> deleteSubtaskColumn(column))
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void deleteSubtaskColumn(SubtaskColumn column) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            Toast.makeText(requireContext(), "Не авторизован", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.deleteSubtaskColumn(token, column.getId(), new TaskDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    columns.remove(column);
+                    columnsAdapter.notifyDataSetChanged();
+                    Toast.makeText(requireContext(), "Колонка удалена", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Ошибка удаления: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void updateSubtaskColumn(SubtaskColumn column, String newName) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            Toast.makeText(requireContext(), "Не авторизован", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("Id", column.getId());
+            jsonBody.put("Name", newName);
+            jsonBody.put("TaskId", column.getTaskId());
+        } catch (JSONException e) {
+            Toast.makeText(requireContext(), "Ошибка формирования данных", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.updateSubtaskColumn(token, column.getId(), jsonBody, new SubtaskColumnCreateCallback() {
+            @Override
+            public void onSuccess(SubtaskColumn updatedColumn) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+
+                    for (int i = 0; i < columns.size(); i++) {
+                        if (columns.get(i).getId() == updatedColumn.getId()) {
+                            columns.set(i, updatedColumn);
+                            columnsAdapter.notifyItemChanged(i);
+                            break;
+                        }
+                    }
+
+                    Toast.makeText(requireContext(), "Колонка обновлена", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Ошибка обновления: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void createSubtaskColumn(String name) {

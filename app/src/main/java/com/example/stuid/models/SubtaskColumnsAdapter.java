@@ -21,6 +21,7 @@ import com.example.stuid.fragments.SubtasksFragment;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 public class SubtaskColumnsAdapter extends RecyclerView.Adapter<SubtaskColumnsAdapter.ColumnViewHolder> {
@@ -100,6 +101,12 @@ public class SubtaskColumnsAdapter extends RecyclerView.Adapter<SubtaskColumnsAd
 
         public void bind(SubtaskColumn column) {
             columnTitle.setText(column.getName());
+
+            columnTitle.setOnClickListener(v -> {
+                if (subtasksFragment != null && subtasksFragment instanceof SubtasksFragment) {
+                    ((SubtasksFragment) subtasksFragment).showAddColumnDialog(column);
+                }
+            });
 
             tasksRecyclerView.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
             tasksRecyclerView.setTag(column);
@@ -210,21 +217,27 @@ public class SubtaskColumnsAdapter extends RecyclerView.Adapter<SubtaskColumnsAd
     }
 
     public void removeSubtask(Subtask subtaskToRemove) {
+        boolean taskRemoved = false;
+
         for (SubtaskColumn column : columns) {
-            int index = -1;
-            for (int i = 0; i < column.getSubtasks().size(); i++) {
-                if (column.getSubtasks().get(i).getId() == subtaskToRemove.getId()) {
-                    index = i;
+            List<Subtask> tasks = column.getSubtasks();
+            Iterator<Subtask> iterator = tasks.iterator();
+
+            while (iterator.hasNext()) {
+                Subtask task = iterator.next();
+                if (task.getId() == subtaskToRemove.getId()) {
+                    iterator.remove(); // Удаляем из списка
+                    taskRemoved = true;
                     break;
                 }
             }
-            if (index >= 0) {
-                column.getSubtasks().remove(index);
+
+            if (taskRemoved) {
                 SubtaskAdapter adapter = taskAdapters.get(column.getId());
                 if (adapter != null) {
-                    adapter.updateSubtasks(column.getSubtasks());
+                    adapter.updateSubtasks(new ArrayList<>(tasks)); // Обновляем адаптер
                 }
-                return;
+                return; // Выходим, если задача найдена и удалена
             }
         }
     }

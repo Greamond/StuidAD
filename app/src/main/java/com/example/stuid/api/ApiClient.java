@@ -1481,4 +1481,74 @@ public class ApiClient {
             }
         });
     }
+
+    public void deleteSubtaskColumn(String token, int columnId, TaskDeleteCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "ChaptersSubtask/" + columnId)
+                .addHeader("Authorization", "Bearer " + token)
+                .delete()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    callback.onSuccess();
+                } else {
+                    callback.onFailure("Server error: " + response.code());
+                }
+            }
+        });
+    }
+
+    public void updateSubtaskColumn(String token, int columnId, JSONObject jsonBody, SubtaskColumnCreateCallback callback) {
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "ChaptersSubtask/" + columnId)
+                .put(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+
+                    // Предположим, что сервер возвращает обновлённую колонку
+                    SubtaskColumn column = new SubtaskColumn(
+                            json.getInt("Id"),
+                            json.getInt("TaskId"),
+                            json.getString("Name"),
+                            new ArrayList<>()
+                    );
+
+                    callback.onSuccess(column);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
 }
