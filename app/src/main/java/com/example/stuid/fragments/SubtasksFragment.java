@@ -379,7 +379,6 @@ public class SubtasksFragment extends Fragment {
             @Override
             public void onSuccess(SubtaskColumn updatedColumn) {
                 requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
 
                     for (int i = 0; i < columns.size(); i++) {
                         if (columns.get(i).getId() == updatedColumn.getId()) {
@@ -389,6 +388,9 @@ public class SubtasksFragment extends Fragment {
                         }
                     }
 
+                    loadSubtasks();
+
+                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(requireContext(), "Колонка обновлена", Toast.LENGTH_SHORT).show();
                 });
             }

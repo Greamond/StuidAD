@@ -130,7 +130,7 @@ public class TasksFragment extends Fragment {
         columnsRecyclerView.setAdapter(columnsAdapter);
 
         // Кнопка добавления колонки
-        view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showAddColumnDialog());
+        view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showEditColumnDialog(null));
 
         // Обновление данных
         swipeRefresh.setOnRefreshListener(this::refreshData);
@@ -271,25 +271,123 @@ public class TasksFragment extends Fragment {
         showAddTaskDialog(columnId);
     }
 
-    private void showAddColumnDialog() {
+    public void showEditColumnDialog(TaskColumn columnToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Создать новую колонку");
+        builder.setTitle(columnToEdit == null ? "Создать колонку" : "Редактировать колонку");
+
         final EditText input = new EditText(requireContext());
         input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setText(columnToEdit != null ? columnToEdit.getName() : "");
+
         builder.setView(input);
 
-        builder.setPositiveButton("Создать", (dialog, which) -> {
-            String columnName = input.getText().toString().trim();
-            if (!columnName.isEmpty()) {
-                createColumn(columnName);
+        // Кнопка создания или сохранения
+        builder.setPositiveButton(columnToEdit == null ? "Создать" : "Сохранить", (dialog, which) -> {
+            String name = input.getText().toString().trim();
+            if (!name.isEmpty()) {
+                if (columnToEdit == null) {
+                    createColumn(name);
+                } else {
+                    updateColumn(columnToEdit.getId(), name);
+                }
             } else {
                 Toast.makeText(requireContext(), "Введите название колонки", Toast.LENGTH_SHORT).show();
             }
         });
 
-        builder.setNegativeButton("Отмена", null);
+        // Кнопка удаления (только при редактировании)
+        if (columnToEdit != null) {
+            builder.setNegativeButton("Удалить", (dialog, which) -> {
+                showDeleteColumnConfirmationDialog(columnToEdit);
+            });
+        }
+
+        builder.setNeutralButton("Отмена", null);
         builder.show();
     }
+
+    private void showDeleteColumnConfirmationDialog(TaskColumn column) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Подтвердите удаление")
+                .setMessage("Вы уверены, что хотите удалить колонку \"" + column.getName() + "\"?")
+                .setPositiveButton("Удалить", (dialog, which) -> deleteColumn(column))
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void deleteColumn(TaskColumn column) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.deleteColumn(token, column.getId(), new TaskDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                requireActivity().runOnUiThread(() -> {
+                    columns.remove(column);
+                    columnsAdapter.notifyDataSetChanged();
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Колонка удалена", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Ошибка удаления: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void updateColumn(int columnId, String newName) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("Id", columnId);
+            jsonBody.put("Name", newName);
+            jsonBody.put("ProjectId", projectId);
+        } catch (JSONException e) {
+            Toast.makeText(requireContext(), "Ошибка формирования данных", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        apiClient.updateColumn(token, columnId, jsonBody, new ColumnCreateCallback() {
+            @Override
+            public void onSuccess(TaskColumn updatedColumn) {
+                requireActivity().runOnUiThread(() -> {
+                    for (int i = 0; i < columns.size(); i++) {
+                        if (columns.get(i).getId() == updatedColumn.getId()) {
+                            columns.set(i, updatedColumn);
+                            columnsAdapter.notifyItemChanged(i);
+                            break;
+                        }
+                    }
+
+                    loadTasks();
+
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Колонка обновлена", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), "Ошибка обновления: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+
 
     private void createColumn(String name) {
         String token = prefs.getString("jwt_token", null);

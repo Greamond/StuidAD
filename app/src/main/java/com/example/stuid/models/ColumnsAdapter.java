@@ -24,6 +24,7 @@ import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnViewHolder> {
@@ -103,6 +104,12 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
 
         public void bind(TaskColumn column) {
             columnTitle.setText(column.getName());
+
+            columnTitle.setOnClickListener(v -> {
+                if (tasksFragment != null && tasksFragment instanceof TasksFragment) {
+                    ((TasksFragment) tasksFragment).showEditColumnDialog(column);
+                }
+            });
 
             tasksRecyclerView.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
             tasksRecyclerView.setTag(column);
@@ -215,18 +222,23 @@ public class ColumnsAdapter extends RecyclerView.Adapter<ColumnsAdapter.ColumnVi
 
     public void removeTask(Task taskToRemove) {
         for (TaskColumn column : columns) {
-            int index = -1;
-            for (int i = 0; i < column.getTasks().size(); i++) {
-                if (column.getTasks().get(i).getId() == taskToRemove.getId()) {
-                    index = i;
+            List<Task> tasks = column.getTasks();
+            Iterator<Task> iterator = tasks.iterator();
+
+            boolean found = false;
+            while (iterator.hasNext()) {
+                Task task = iterator.next();
+                if (task.getId() == taskToRemove.getId()) {
+                    iterator.remove(); // Удаляем из списка
+                    found = true;
                     break;
                 }
             }
-            if (index >= 0) {
-                column.getTasks().remove(index);
+
+            if (found) {
                 TaskAdapter adapter = taskAdapters.get(column.getId());
                 if (adapter != null) {
-                    adapter.updateTasks(column.getTasks());
+                    adapter.updateTasks(new ArrayList<>(tasks)); // Обновляем адаптер
                 }
                 return;
             }

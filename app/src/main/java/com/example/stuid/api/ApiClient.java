@@ -1551,4 +1551,71 @@ public class ApiClient {
             }
         });
     }
+
+    public void updateColumn(String token, int columnId, JSONObject jsonBody, ColumnCreateCallback callback) {
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "ChaptersTask/" + columnId)
+                .put(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    TaskColumn column = new TaskColumn(
+                            json.getInt("Id"),
+                            json.getInt("ProjectId"),
+                            json.getString("Name"),
+                            new ArrayList<>()
+                    );
+                    callback.onSuccess(column);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void deleteColumn(String token, int columnId, TaskDeleteCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "ChaptersTask/" + columnId)
+                .delete()
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    callback.onSuccess();
+                } else {
+                    callback.onFailure("Server error: " + response.code());
+                }
+            }
+        });
+    }
 }
