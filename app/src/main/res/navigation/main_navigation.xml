@@ -39,6 +39,20 @@
         <argument
             android:name="projectId"
             app:argType="integer" />
+
+        <action
+            android:id="@+id/action_tasksDetailFragment_to_subtaskDetailFragment"
+            app:destination="@id/subtasksDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/subtasksDetailFragment"
+        android:name="com.example.stuid.fragments.SubtasksFragment"
+        android:label="Подзадачи задачи"
+        tools:layout="@layout/fragment_subtasks">
+        <argument
+            android:name="taskId"
+            app:argType="integer" />
     </fragment>
 
 </navigation>

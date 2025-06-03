@@ -6,6 +6,7 @@ import android.content.ClipDescription;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -14,6 +15,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -34,6 +36,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     private ApiClient apiClient;
     private String authToken;
     private ItemTouchHelper itemTouchHelper;
+    private static View view;
 
     public interface OnTaskClickListener {
         void onTaskClick(Task task);
@@ -50,6 +53,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
         public ViewHolder(View itemView) {
             super(itemView);
+            view = itemView;
             tvNumber = itemView.findViewById(R.id.tvTaskNumber);
             tvName = itemView.findViewById(R.id.tvTaskName);
             tvCreator = itemView.findViewById(R.id.tvTaskCreator);
@@ -120,6 +124,18 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             return true;
         });
 
+        holder.itemView.findViewById(R.id.tvSubtasks).setOnClickListener(v -> {
+            Log.d("NAVIGATION", "Opening tasks for project ID: " + task.getId());
+
+            Bundle args = new Bundle();
+            args.putInt("projectId", task.getProjectId());
+            args.putInt("taskId", task.getId());
+            args.putInt("creatorId", task.getCreatorId());
+
+            Navigation.findNavController(view)
+                    .navigate(R.id.action_tasksDetailFragment_to_subtaskDetailFragment, args);
+        });
+
         holder.itemView.setOnClickListener(v -> {
             if (taskClickListener != null) {
                 taskClickListener.onTaskClick(task);
@@ -182,16 +198,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
                 }
             }
         });
-    }
-
-    public String getStatusText(int status) {
-        switch (status) {
-            case 1: return "Новая";
-            case 2: return "В работе";
-            case 3: return "На проверке";
-            case 4: return "Завершена";
-            default: return "Неизвестно";
-        }
     }
 
     @Override

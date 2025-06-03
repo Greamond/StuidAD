@@ -1,9 +1,8 @@
 package com.example.stuid.api;
 
 import com.example.stuid.models.Subtask;
-import com.example.stuid.models.Task;
 
-public interface TaskCreateCallback {
-    void onSuccess(Task task);
+public interface SubtaskCreateCallback {
+    void onSuccess(Subtask subtask);
     void onFailure(String error);
 }

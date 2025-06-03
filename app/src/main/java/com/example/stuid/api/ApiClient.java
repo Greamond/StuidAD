@@ -1,12 +1,13 @@
 package com.example.stuid.api;
 
-import static com.example.stuid.classes.PasswordHasher.generateSalt;
 import static com.example.stuid.classes.PasswordHasher.hashPassword;
 
 import android.util.Log;
 
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
+import com.example.stuid.models.Subtask;
+import com.example.stuid.models.SubtaskColumn;
 import com.example.stuid.models.Task;
 import com.example.stuid.models.TaskColumn;
 
@@ -20,7 +21,6 @@ import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.FormBody;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -751,6 +751,62 @@ public class ApiClient {
         });
     }
 
+    public void getTaskSubtasks(String token, int taskId, final SubtasksCallback callback) {
+        String url = BASE_URL + "Subtasks/task/" + taskId;
+        Log.d("API_REQUEST", "Fetching tasks from: " + url);
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("API_ERROR", "Network error", e);
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "null";
+                    Log.e("API_ERROR", "Server error: " + response.code() + ", " + errorBody);
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    Log.d("API_RESPONSE", "Tasks response: " + responseData);
+
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<Subtask> subtasks = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        Subtask subtask = new Subtask(
+                                json.getInt("Id"),
+                                json.getInt("TaskId"),
+                                json.getString("Name"),
+                                json.getString("Description"),
+                                json.getInt("Responsible"),
+                                json.getInt("CreatorId"),
+                                json.getInt("ChapterId")
+
+                        );
+                        subtask.setPosition(json.getInt("Position"));
+                        subtasks.add(subtask);
+                    }
+                    callback.onSuccess(subtasks);
+                } catch (Exception e) {
+                    Log.e("API_ERROR", "Parsing error", e);
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
     public void createTask(String token, JSONObject taskData, TaskCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 taskData.toString(),
@@ -789,6 +845,52 @@ public class ApiClient {
                     );
                     task.setCreatorId(json.getInt("CreatorId")); // Устанавливаем creatorId
                     callback.onSuccess(task);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void createSubtask(String token, JSONObject subtaskData, SubtaskCreateCallback callback) {
+        RequestBody body = RequestBody.create(
+                subtaskData.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Subtasks")
+                .post(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    Subtask subtask = new Subtask(
+                            json.getInt("Id"),
+                            json.getInt("TaskId"),
+                            json.getString("Name"),
+                            json.getString("Description"),
+                            json.getInt("Responsible"),
+                            json.getInt("ChapterId")
+                    );
+                    subtask.setCreatorId(json.getInt("CreatorId"));
+                    callback.onSuccess(subtask);
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }
@@ -884,9 +986,81 @@ public class ApiClient {
         });
     }
 
+    public void updateSubtask(String token, int subtaskId, JSONObject subtaskData, SubtaskCreateCallback callback) {
+        RequestBody body = RequestBody.create(
+                subtaskData.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Subtasks/" + subtaskId)
+                .put(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "null";
+                    Log.e("API_ERROR", "Server error: " + response.code() + ", " + errorBody);
+                    callback.onFailure("Server error: " + response.code() + ": " + errorBody);
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    Subtask subtask = new Subtask(
+                            json.getInt("Id"),
+                            json.getInt("TaskId"),
+                            json.getString("Name"),
+                            json.getString("Description"),
+                            json.getInt("Responsible"),
+                            json.getInt("ChapterId")
+                    );
+                    subtask.setCreatorId(json.getInt("CreatorId")); // Устанавливаем creatorId
+                    callback.onSuccess(subtask);
+                } catch (Exception e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
     public void deleteTask(String token, int taskId, TaskDeleteCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Tasks/" + taskId)
+                .delete()
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+                callback.onSuccess();
+            }
+        });
+    }
+
+    public void deleteSubtask(String token, int subtaskId, TaskDeleteCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "Subtasks/" + subtaskId)
                 .delete()
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
@@ -992,6 +1166,50 @@ public class ApiClient {
         }
     }
 
+    public void updateSubtaskChapter(String token, int subtaskId, int chapterId, ProfileUpdateCallback callback) {
+        try {
+            // 1. Формируем JSON-тело
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("ChapterId", chapterId);
+
+            // 2. Создаём запрос
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Subtasks/" + subtaskId + "/status")
+                    .put(RequestBody.create(
+                            jsonBody.toString(),
+                            MediaType.parse("application/json")
+                    ))
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build();
+
+            // 3. Отправляем асинхронно
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure("Network error: " + e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    try {
+                        if (response.isSuccessful()) {
+                            callback.onSuccess();
+                        } else {
+                            String errorBody = response.body() != null ?
+                                    response.body().string() : "Empty error body";
+                            callback.onFailure("Server error: " + response.code() + " - " + errorBody);
+                        }
+                    } catch (IOException e) {
+                        callback.onFailure("Error parsing response: " + e.getMessage());
+                    }
+                }
+            });
+
+        } catch (Exception e) {
+            callback.onFailure("Request creation error: " + e.getMessage());
+        }
+    }
+
     public void updateTaskOrder(String token, int projectId, int columnId, List<Task> orderedTasks, ParticipantsCallback callback) {
         JSONObject json = new JSONObject();
         try {
@@ -1014,6 +1232,53 @@ public class ApiClient {
 
             Request request = new Request.Builder()
                     .url(BASE_URL + "Tasks/update-order")
+                    .put(body)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    callback.onFailure(e.getMessage());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (response.isSuccessful()) {
+                        callback.onSuccess();
+                    } else {
+                        callback.onFailure("Server error: " + response.code());
+                    }
+                }
+            });
+
+        } catch (JSONException e) {
+            callback.onFailure("JSON error: " + e.getMessage());
+}
+    }
+
+    public void updateSubtaskOrder(String token, int taskId, int columnId, List<Subtask> orderedTasks, ParticipantsCallback callback) {
+        JSONObject json = new JSONObject();
+        try {
+            json.put("taskId", taskId);
+            json.put("columnId", columnId);
+
+            JSONArray taskArray = new JSONArray();
+            for (int i = 0; i < orderedTasks.size(); i++) {
+                JSONObject taskJson = new JSONObject();
+                taskJson.put("subtaskId", orderedTasks.get(i).getId());
+                taskJson.put("position", i);
+                taskArray.put(taskJson);
+            }
+            json.put("taskOrder", taskArray);
+
+            RequestBody body = RequestBody.create(
+                    MediaType.get("application/json; charset=utf-8"),
+                    json.toString()
+            );
+
+            Request request = new Request.Builder()
+                    .url(BASE_URL + "Subtasks/update-order")
                     .put(body)
                     .addHeader("Authorization", "Bearer " + token)
                     .build();
@@ -1080,6 +1345,47 @@ public class ApiClient {
         });
     }
 
+    public void getSubtaskColumnsForTask(String token, int taskId, SubtaskColumnsCallback callback) {
+        String url = BASE_URL + "ChaptersSubtask/task/" + taskId;
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONArray jsonArray = new JSONArray(responseData);
+                    List<SubtaskColumn> columns = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        int id = json.getInt("Id");
+                        String name = json.getString("Name");
+                        columns.add(new SubtaskColumn(id,taskId, name, new ArrayList<>()));
+                    }
+
+                    callback.onSuccess(columns);
+                } catch (JSONException e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
     public void createColumn(String token, String name, int projectId, ColumnCreateCallback callback) {
         JSONObject jsonBody = new JSONObject();
         try {
@@ -1120,6 +1426,54 @@ public class ApiClient {
                     JSONObject json = new JSONObject(responseData);
                     int id = json.getInt("Id");
                     TaskColumn column = new TaskColumn(id,projectId, name, new ArrayList<>());
+                    callback.onSuccess(column);
+                } catch (JSONException e) {
+                    callback.onFailure("Error parsing response: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void createSubtaskColumn(String token, String name, int taskId, SubtaskColumnCreateCallback callback) {
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("Name", name);
+            jsonBody.put("TaskId", taskId);
+        } catch (JSONException e) {
+            callback.onFailure("JSON error: " + e.getMessage());
+            return;
+        }
+
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.get("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "ChaptersSubtask")
+                .post(body)
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject json = new JSONObject(responseData);
+                    int id = json.getInt("Id");
+                    SubtaskColumn column = new SubtaskColumn(id,taskId, name, new ArrayList<>());
                     callback.onSuccess(column);
                 } catch (JSONException e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());

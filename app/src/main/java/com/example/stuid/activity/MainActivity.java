@@ -36,6 +36,9 @@ public class MainActivity extends AppCompatActivity {
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
             if (destination.getId() == R.id.tasksDetailFragment) {
                 bottomNav.setVisibility(View.GONE);
+            }
+            else if (destination.getId() == R.id.subtasksDetailFragment) {
+                bottomNav.setVisibility(View.GONE);
             } else {
                 bottomNav.setVisibility(View.VISIBLE);
             }
