@@ -18,6 +18,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -1660,6 +1661,82 @@ public class ApiClient {
                 } catch (Exception e) {
                     callback.onFailure("Error parsing response: " + e.getMessage());
                 }
+            }
+        });
+    }
+
+    public void sendPasswordResetEmail(String email, int code, AuthPasswordResetCallback callback) {
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("Email", email);
+            jsonBody.put("Code", code);
+        } catch (JSONException e) {
+            callback.onFailure("JSON error: " + e.getMessage());
+            return;
+        }
+
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "auth/forgot-password")
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Server error: " + response.code());
+                    return;
+                }
+                callback.onSuccess("Код отправлен на email", null);
+            }
+        });
+    }
+
+    public void resetPassword(String email, String newPassword, AuthPasswordResetCallback callback) {
+        String hashedPassword = hashPassword(newPassword);
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("email", email);
+            jsonBody.put("newPassword", hashedPassword);
+        } catch (JSONException e) {
+            callback.onFailure("JSON error: " + e.getMessage());
+            return;
+        }
+
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(BASE_URL + "auth/reset-password")
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure("Network error: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure("Ошибка сброса: " + response.code());
+                    return;
+                }
+                callback.onSuccess("Пароль успешно изменён", null);
             }
         });
     }

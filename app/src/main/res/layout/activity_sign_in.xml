@@ -114,6 +114,16 @@
         android:background="@drawable/underline_text_background"
         />
 
+    <TextView
+        android:id="@+id/tvForgotPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:text="Забыли пароль?"
+        android:textColor="@color/blue"
+        android:layout_marginTop="18dp"
+        android:textStyle="bold"/>
+
     <!-- Прогресс бар (скрыт по умолчанию) -->
     <ProgressBar
         android:id="@+id/progressBar"
