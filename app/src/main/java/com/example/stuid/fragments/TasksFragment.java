@@ -317,7 +317,6 @@ public class TasksFragment extends Fragment {
         final TextInputEditText input = new TextInputEditText(textInputLayout.getContext());
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         input.setTextSize(16);
-        input.setPadding(20, 20, 20, 20);
         input.setText(columnToEdit != null ? columnToEdit.getName() : "");
 
         textInputLayout.addView(input);
