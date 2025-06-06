@@ -9,6 +9,9 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,6 +34,7 @@ import com.example.stuid.api.ProfilePhotoDownloadCallback;
 import com.example.stuid.api.ProfileUpdateCallback;
 import com.example.stuid.classes.FileUtil;
 import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,6 +45,7 @@ import java.nio.file.Files;
 
 public class ProfileFragment extends Fragment {
     private static final int PICK_IMAGE_REQUEST = 1;
+    private static final long MAX_PHOTO_SIZE_BYTES = 1024 * 1024;
     private ShapeableImageView ivPhoto;
     private SharedPreferences prefs;
     private SharedPreferences.Editor editor;
@@ -180,11 +185,26 @@ public class ProfileFragment extends Fragment {
                 .inflate(R.layout.dialog_edit_profile, null);
         builder.setView(dialogView);
 
+        TextInputLayout tilLastName = dialogView.findViewById(R.id.tilLastName);
+        TextInputLayout tilFirstName = dialogView.findViewById(R.id.tilFirstName);
+        TextInputLayout tilMiddleName = dialogView.findViewById(R.id.tilMiddleName);
+        TextInputLayout tilDescription = dialogView.findViewById(R.id.tilDescription);
+
         EditText etLastName = dialogView.findViewById(R.id.etLastName);
         EditText etFirstName = dialogView.findViewById(R.id.etFirstName);
         EditText etMiddleName = dialogView.findViewById(R.id.etMiddleName);
         EditText etDescription = dialogView.findViewById(R.id.etDescription);
+
         Button btnSave = dialogView.findViewById(R.id.btnSave);
+
+        setRussianNameInputFilter(etLastName);
+        setRussianNameInputFilter(etFirstName);
+        setRussianNameInputFilter(etMiddleName);
+
+        addClearErrorTextWatcher(etLastName, tilLastName);
+        addClearErrorTextWatcher(etFirstName, tilFirstName);
+        addClearErrorTextWatcher(etMiddleName, tilMiddleName);
+        addClearErrorTextWatcher(etDescription, tilDescription);
 
         // Заполняем текущие данные
         String[] nameParts = prefs.getString("employee_fullName", "").split(" ");
@@ -203,12 +223,76 @@ public class ProfileFragment extends Fragment {
             String middleName = etMiddleName.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
 
-            if (validateInput(lastName, firstName)) {
-                updateProfile(lastName, firstName, middleName, description, dialog);
+            boolean isValid = true;
+
+            // Очистка предыдущих ошибок
+            tilLastName.setError(null);
+            tilFirstName.setError(null);
+            tilMiddleName.setError(null);
+
+            // Проверка обязательных полей
+            if (lastName.isEmpty()) {
+                tilLastName.setError("Фамилия обязательна");
+                isValid = false;
+            } else if (!isValidRussianName(lastName)) {
+                tilLastName.setError("Фамилия должна начинаться с заглавной буквы и содержать только русские символы");
+                isValid = false;
             }
+
+            if (firstName.isEmpty()) {
+                tilFirstName.setError("Имя обязательно");
+                isValid = false;
+            } else if (!isValidRussianName(firstName)) {
+                tilFirstName.setError("Имя должно начинаться с заглавной буквы и содержать только русские символы");
+                isValid = false;
+            }
+
+            if (middleName.isEmpty()) {
+                tilMiddleName.setError("Отчество обязательно");
+                isValid = false;
+            } else if (!isValidRussianName(middleName)) {
+                tilMiddleName.setError("Отчество должно начинаться с заглавной буквы и содержать только русские символы");
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            updateProfile(lastName, firstName, middleName, description, dialog);
         });
 
         dialog.show();
+    }
+
+    private boolean isValidRussianName(String name) {
+        return name != null && name.matches("^[А-Я][а-я]+$");
+    }
+
+    private void addClearErrorTextWatcher(EditText editText, TextInputLayout textInputLayout) {
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                textInputLayout.setError(null);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+    }
+
+    private void setRussianNameInputFilter(EditText editText) {
+        InputFilter filter = (source, start, end, dest, dstart, dend) -> {
+            for (int i = start; i < end; i++) {
+                char c = source.charAt(i);
+                if (!Character.isLetter(c) || !(c >= 'А' && c <= 'я') && c != 'ё' && c != 'Ё') {
+                    return "";
+                }
+            }
+            return null;
+        };
+        editText.setFilters(new InputFilter[]{filter});
     }
 
     private void updateProfile(String lastName, String firstName, String middleName,
