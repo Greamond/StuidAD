@@ -559,35 +559,13 @@ public class TasksFragment extends Fragment {
         container.addView(view);
     }
 
-    private void loadProjectParticipants() {
-        String token = prefs.getString("jwt_token", null);
-        if (token == null) return;
-
-        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
-            @Override
-            public void onSuccess(List<Employee> participants) {
-                requireActivity().runOnUiThread(() -> {
-                    projectParticipants.clear();
-                    projectParticipants.addAll(participants);
-                });
-            }
-
-            @Override
-            public void onFailure(String error) {
-                Log.e("TasksFragment", "Error loading participants: " + error);
-            }
-        });
-    }
-
     private void checkEditPermission(Task task, Runnable onSuccess) {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
-
         // Проверяем, является ли пользователь создателем проекта
         boolean isProjectCreator = currentUserId == projectCreatorId;
         // Проверяем, является ли текущий пользователь создателем задачи
         boolean isTaskCreator  = task.getCreatorId() == currentUserId;
-
         if (isProjectCreator || isTaskCreator) {
             // Если пользователь создатель - сразу разрешаем редактирование
             requireActivity().runOnUiThread(() -> {
@@ -596,7 +574,6 @@ public class TasksFragment extends Fragment {
             });
             return;
         }
-
         // Если не создатель - проверяем, является ли ответственным
         apiClient.getTaskAssignees(token, task.getId(), new EmployeesCallback() {
             @Override
@@ -612,7 +589,6 @@ public class TasksFragment extends Fragment {
                     onSuccess.run();
                 });
             }
-
             @Override
             public void onFailure(String error) {
                 Log.e("TasksFragment", "Error loading assignees: " + error);

@@ -31,7 +31,7 @@ import okhttp3.Response;
 public class ApiClient {
     private static final String BASE_URL = "http://10.0.2.2:5000/api/";
     private OkHttpClient client;
-    private String authToken; // JWT токена
+    private String authToken;
 
     public void setAuthToken(String token) {
         this.authToken = token;
