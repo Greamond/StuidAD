@@ -1,12 +1,14 @@
 package com.example.stuid.fragments;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -50,6 +52,8 @@ import com.example.stuid.models.Employee;
 import com.example.stuid.models.Task;
 import com.example.stuid.models.TaskAdapter;
 import com.example.stuid.models.TaskColumn;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -66,6 +70,7 @@ import java.util.function.Consumer;
 public class TasksFragment extends Fragment {
     private int projectId;
     private int projectCreatorId;
+    private List<Employee> allEmployees = new ArrayList<>();
     private List<Employee> projectParticipants = new ArrayList<>();
     private List<Employee> selectedAssignees = new ArrayList<>();
     private SharedPreferences prefs;
@@ -81,6 +86,7 @@ public class TasksFragment extends Fragment {
     private ColumnsAdapter columnsAdapter;
     private List<TaskColumn> columns = new ArrayList<>();
     private static Task draggedTask;
+    private boolean isPublicProject;
 
     public static void setDraggedTask(Task task) {
         draggedTask = task;
@@ -95,6 +101,7 @@ public class TasksFragment extends Fragment {
         super.onCreate(savedInstanceState);
         prefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
         currentUserId = prefs.getInt("employee_id", -1);
+        isPublicProject = getArguments().getBoolean("isPublicProject");
 
         if (getArguments() != null) {
             projectId = getArguments().getInt("projectId", -1);
@@ -146,12 +153,14 @@ public class TasksFragment extends Fragment {
         loadProjectParticipants(() -> {
             // После загрузки участников загружаем колонки и задачи
             loadColumns();
+            loadAllEmployee();
         });
     }
 
     private void refreshData() {
         loadProjectParticipants(() -> {
             loadTasks();
+            loadAllEmployee();
             swipeRefresh.setRefreshing(false);
         });
     }
@@ -182,6 +191,26 @@ public class TasksFragment extends Fragment {
         });
     }
 
+    private void loadAllEmployee() {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) return;
+
+        apiClient.getEmployees(token, new EmployeesCallback() {
+            @Override
+            public void onSuccess(List<Employee> employees) {
+                requireActivity().runOnUiThread(() -> {
+                    allEmployees.clear();
+                    allEmployees.addAll(employees);
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                Toast.makeText(requireContext(), "Ошибка загрузки сотрудников", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void loadColumns() {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
@@ -200,7 +229,9 @@ public class TasksFragment extends Fragment {
             @Override
             public void onFailure(String error) {
                 requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(requireContext(), "Ошибка загрузки колонок: " + error, Toast.LENGTH_SHORT).show();
+                    loadTasks();
                 });
             }
         });
@@ -258,43 +289,98 @@ public class TasksFragment extends Fragment {
         });
     }
 
-    private void onAddTaskClicked(int columnId) {
-        showAddTaskDialog(columnId);
-    }
+    private void onAddTaskClicked(int columnId) { showAddTaskDialog(columnId, isPublicProject); }
 
     public void showEditColumnDialog(TaskColumn columnToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle(columnToEdit == null ? "Создать колонку" : "Редактировать колонку");
 
-        final EditText input = new EditText(requireContext());
+        // Создаем контейнер с TextInputLayout
+        LinearLayout container = new LinearLayout(requireContext());
+        container.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 16,
+                getResources().getDisplayMetrics()
+        );
+        container.setPadding(padding, padding, padding, 0);
+
+        // Создаём TextInputLayout
+        TextInputLayout textInputLayout = new TextInputLayout(requireContext());
+        textInputLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        textInputLayout.setErrorEnabled(true);
+        textInputLayout.setHint("Название колонки");
+
+        // EditText
+        final TextInputEditText input = new TextInputEditText(textInputLayout.getContext());
         input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setTextSize(16);
+        input.setPadding(20, 20, 20, 20);
         input.setText(columnToEdit != null ? columnToEdit.getName() : "");
 
-        builder.setView(input);
+        textInputLayout.addView(input);
+        container.addView(textInputLayout);
 
-        // Кнопка создания или сохранения
-        builder.setPositiveButton(columnToEdit == null ? "Создать" : "Сохранить", (dialog, which) -> {
-            String name = input.getText().toString().trim();
-            if (!name.isEmpty()) {
-                if (columnToEdit == null) {
-                    createColumn(name);
-                } else {
-                    updateColumn(columnToEdit.getId(), name);
-                }
-            } else {
-                Toast.makeText(requireContext(), "Введите название колонки", Toast.LENGTH_SHORT).show();
-            }
-        });
+        builder.setView(container);
 
-        // Кнопка удаления (только при редактировании)
+        // Добавляем кнопки ДО создания диалога
         if (columnToEdit != null) {
-            builder.setNegativeButton("Удалить", (dialog, which) -> {
+            builder.setNegativeButton("Удалить", (dialog1, which) -> {
                 showDeleteColumnConfirmationDialog(columnToEdit);
             });
         }
 
         builder.setNeutralButton("Отмена", null);
-        builder.show();
+        builder.setPositiveButton(columnToEdit == null ? "Создать" : "Сохранить", null);
+
+        // Теперь создаём диалог
+        AlertDialog dialog = builder.create();
+
+        // Назначаем обработчик только после создания диалога
+        dialog.setOnShowListener(dialogInterface -> {
+            Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            positiveButton.setOnClickListener(v -> {
+                String name = input.getText().toString().trim();
+                textInputLayout.setError(null); // очищаем ошибку
+
+                if (name.isEmpty()) {
+                    textInputLayout.setError("Введите название колонки");
+                    return;
+                }
+
+                if (!isValidColumnName(name)) {
+                    textInputLayout.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                    return;
+                }
+
+                if (columnToEdit == null) {
+                    createColumn(name);
+                } else {
+                    updateColumn(columnToEdit.getId(), name);
+                }
+
+                dialog.dismiss();
+            });
+        });
+
+        dialog.show();
+    }
+
+    private boolean isValidColumnName(String name) {
+        if (name == null || name.trim().isEmpty()) return false;
+
+        String[] words = name.trim().split(" ");
+        if (words.length == 0) return false;
+
+        String firstWord = words[0];
+        if (firstWord.isEmpty() || !Character.isUpperCase(firstWord.codePointAt(0))) {
+            return false;
+        }
+
+        // Проверяем, что текст содержит только русские буквы и пробелы
+        return name.matches("^[А-ЯЁ][а-яё\\s\\-]*$");
     }
 
     private void showDeleteColumnConfirmationDialog(TaskColumn column) {
@@ -378,8 +464,6 @@ public class TasksFragment extends Fragment {
         });
     }
 
-
-
     private void createColumn(String name) {
         String token = prefs.getString("jwt_token", null);
         if (token == null) {
@@ -411,39 +495,26 @@ public class TasksFragment extends Fragment {
         });
     }
 
-    private void showAddTaskDialog(int columnId) {
+    private void showAddTaskDialog(int columnId, boolean isPublicProject) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Новая задача");
-
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_add_task, null);
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_task, null);
         builder.setView(dialogView);
 
         EditText etName = dialogView.findViewById(R.id.etTaskName);
         EditText etDescription = dialogView.findViewById(R.id.etTaskDescription);
         AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
         LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
+        TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName); // должен быть в разметке
 
-        // Очищаем список выбранных ответственных
         selectedAssignees.clear();
         llSelectedAssignees.removeAllViews();
 
-        // Настройка автодополнения для ответственных
-        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                projectParticipants
-        ) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                Employee employee = getItem(position);
-                if (employee != null) {
-                    ((TextView) view).setText(employee.getFullName());
-                }
-                return view;
-            }
-        };
+        List<Employee> assignees = isPublicProject ? allEmployees : projectParticipants;
+
+        ArrayAdapter<Employee> adapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_dropdown_item_1line, assignees);
+
         actvAssigneeSearch.setAdapter(adapter);
 
         actvAssigneeSearch.setOnItemClickListener((parent, view, position, id) -> {
@@ -455,22 +526,38 @@ public class TasksFragment extends Fragment {
             }
         });
 
-        builder.setPositiveButton("Создать", (dialog, which) -> {
+        builder.setPositiveButton("Создать", null); // Установим обработчик ниже
+        builder.setNegativeButton("Отмена", null);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setOnClickListener(v -> {
             String name = etName.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
-
-            if (name.isEmpty()) {
-                Toast.makeText(requireContext(), "Введите название задачи", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
             int creatorId = prefs.getInt("employee_id", -1);
-            if (creatorId == -1) {
-                Toast.makeText(requireContext(), "Ошибка: не удалось определить создателя задачи",
-                        Toast.LENGTH_SHORT).show();
-                return;
+
+            tilTaskName.setError(null);
+            boolean isValid = true;
+
+            // Проверка имени
+            if (name.isEmpty()) {
+                tilTaskName.setError("Введите название задачи");
+                isValid = false;
+            } else if (!isValidTaskName(name)) {
+                tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                isValid = false;
             }
 
+            // Проверка ответственных (только для приватных проектов)
+            if (!isPublicProject && selectedAssignees.isEmpty()) {
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // Если всё ок, отправляем запрос
             List<Integer> assigneeIds = new ArrayList<>();
             for (Employee assignee : selectedAssignees) {
                 assigneeIds.add(assignee.getEmployeeId());
@@ -481,32 +568,23 @@ public class TasksFragment extends Fragment {
                 jsonBody.put("Name", name);
                 jsonBody.put("Description", description);
                 jsonBody.put("ProjectId", projectId);
-                jsonBody.put("ChapterId", columnId); // Используем переданный columnId
+                jsonBody.put("ChapterId", columnId);
                 jsonBody.put("CreatorId", creatorId);
-
-                if (!assigneeIds.isEmpty()) {
-                    jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
-                }
+                jsonBody.put("AssigneeIds", new JSONArray(assigneeIds));
             } catch (JSONException e) {
-                Toast.makeText(requireContext(), "Ошибка создания задачи", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Ошибка формирования запроса", Toast.LENGTH_SHORT).show();
                 return;
             }
-
-            progressBar.setVisibility(View.VISIBLE);
 
             String token = prefs.getString("jwt_token", null);
-            if (token == null) {
-                Toast.makeText(requireContext(), "Ошибка авторизации", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            if (token == null) return;
 
+            progressBar.setVisibility(View.VISIBLE);
             apiClient.createTask(token, jsonBody, new TaskCreateCallback() {
                 @Override
                 public void onSuccess(Task task) {
                     requireActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-
-                        // Находим нужную колонку и добавляем задачу
                         for (TaskColumn column : columns) {
                             if (column.getId() == task.getChapter()) {
                                 column.getTasks().add(task);
@@ -514,9 +592,9 @@ public class TasksFragment extends Fragment {
                                 break;
                             }
                         }
-
                         selectedAssignees.clear();
                         Toast.makeText(requireContext(), "Задача создана", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
                     });
                 }
 
@@ -529,14 +607,21 @@ public class TasksFragment extends Fragment {
                 }
             });
         });
+    }
 
-        builder.setNegativeButton("Отмена", (dialog, which) -> {
-            // Очищаем выбранных ответственных при отмене
-            selectedAssignees.clear();
-            dialog.dismiss();
-        });
+    private boolean isValidTaskName(String name) {
+        if (name == null || name.trim().isEmpty()) return false;
 
-        builder.show();
+        // Проверяем, что первое слово начинается с заглавной буквы
+        String[] words = name.trim().split(" ");
+        if (words.length == 0) return false;
+        String firstWord = words[0];
+        if (firstWord.isEmpty() || !Character.isUpperCase(firstWord.codePointAt(0))) {
+            return false;
+        }
+
+        // Проверяем, что текст на русском (только кириллица + пробелы)
+        return name.matches("^[А-ЯЁ][а-яё\\s\\-]*$");
     }
 
     private void addAssigneeView(Employee employee, LinearLayout container, boolean removable) {
@@ -600,19 +685,15 @@ public class TasksFragment extends Fragment {
         });
     }
 
-    private void setupAssigneeSearch(AutoCompleteTextView actvAssigneeSearch,
-                                     LinearLayout llSelectedAssignees) {
-        Log.d("TasksFragment", "Setting up assignee search with " + projectParticipants.size() + " participants");
+    private void setupAssigneeSearch(AutoCompleteTextView actvAssigneeSearch, LinearLayout llSelectedAssignees, boolean isPublicProject) {
+        List<Employee> assignees = isPublicProject ? allEmployees : projectParticipants;
 
-        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                projectParticipants
-        ) {
+        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(requireContext(),
+                android.R.layout.simple_dropdown_item_1line, assignees) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
-                Employee employee = getItem(position);
+                Employee employee = (Employee) getItem(position);
                 if (employee != null) {
                     ((TextView) view).setText(employee.getFullName());
                 }
@@ -621,10 +702,10 @@ public class TasksFragment extends Fragment {
         };
 
         actvAssigneeSearch.setAdapter(adapter);
+
         actvAssigneeSearch.setOnItemClickListener((parent, view, position, id) -> {
             Employee selected = adapter.getItem(position);
             if (selected != null && !selectedAssignees.contains(selected)) {
-                Log.d("TasksFragment", "Assignee selected: " + selected.getFullName());
                 selectedAssignees.add(selected);
                 addAssigneeView(selected, llSelectedAssignees, true);
                 actvAssigneeSearch.setText("");
@@ -647,6 +728,8 @@ public class TasksFragment extends Fragment {
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
 
+            TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName);
+
             // Заполняем поля
             etName.setText(task.getName());
             etDescription.setText(task.getDescription());
@@ -667,12 +750,12 @@ public class TasksFragment extends Fragment {
 
             // Загружаем текущих ответственных
             loadTaskAssignees(task.getId(), llSelectedAssignees, () -> {
-
                 if (canEditTask) {
-                    setupAssigneeSearch(actvAssigneeSearch, llSelectedAssignees);
+                    setupAssigneeSearch(actvAssigneeSearch, llSelectedAssignees, isPublicProject);
                 }
             });
 
+            builder.setNeutralButton("Сохранить", null);
             builder.setPositiveButton("Закрыть", null);
 
             if (canEditTask && (currentUserId == task.getCreatorId() || currentUserId == projectCreatorId)) {
@@ -681,17 +764,34 @@ public class TasksFragment extends Fragment {
                 });
             }
 
-            builder.setPositiveButton("Закрыть", null);
+            AlertDialog dialog = builder.create();
+            dialog.show();
 
-            if (canEditTask) {
-                builder.setNeutralButton("Сохранить", (dialog, which) -> {
-                    updateTask(task.getId(),
-                            etName.getText().toString(),
-                            etDescription.getText().toString());
-                });
-            }
+            // Переопределяем обработчик положительной кнопки
+            Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+            neutralButton.setOnClickListener(v -> {
+                String name = etName.getText().toString().trim();
+                String description = etDescription.getText().toString().trim();
 
-            builder.show();
+                tilTaskName.setError(null); // очистка предыдущей ошибки
+
+                boolean isValid = true;
+
+                // Валидация названия
+                if (name.isEmpty()) {
+                    tilTaskName.setError("Введите название задачи");
+                    isValid = false;
+                } else if (!isValidTaskName(name)) {
+                    tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                    isValid = false;
+                }
+
+                if (!isValid) return;
+
+                // Если всё ок — сохраняем изменения
+                updateTask(task.getId(), name, description);
+                dialog.dismiss();
+            });
         });
     }
 

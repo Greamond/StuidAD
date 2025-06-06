@@ -48,7 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskButtonClickListener {
-    private static final String NAME_REGEX = "^([А-ЯЁ][а-яё]+)(\\s[А-ЯЁ][а-яё]+)*$";
+    private List<Employee> allEmployees = new ArrayList<>();
     private RecyclerView recyclerView;
     private ApiClient apiClient;
     private SharedPreferences prefs;
@@ -253,8 +253,6 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             public void afterTextChanged(Editable s) {}
         });
     }
-
-    private List<Employee> allEmployees = new ArrayList<>(); // Добавляем поле класса
 
     private void loadEmployeesForDialog(AutoCompleteTextView actvEmployeeSearch, LinearLayout llSelectedEmployees) {
         String token = prefs.getString("jwt_token", null);
@@ -774,6 +772,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         Log.d("NAVIGATION", "Opening tasks for project ID: " + project.getId());
 
         Bundle args = new Bundle();
+        args.putBoolean("isPublicProject", project.isPublic());
         args.putInt("projectId", project.getId());
         args.putInt("creatorId", project.getCreator());
 
