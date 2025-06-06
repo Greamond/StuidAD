@@ -1,9 +1,12 @@
 package com.example.stuid.fragments;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -39,11 +42,13 @@ import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
 import com.example.stuid.models.ProjectAdapter;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskButtonClickListener {
+    private static final String NAME_REGEX = "^([А-ЯЁ][а-яё]+)(\\s[А-ЯЁ][а-яё]+)*$";
     private RecyclerView recyclerView;
     private ApiClient apiClient;
     private SharedPreferences prefs;
@@ -149,8 +154,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Новый проект");
 
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_add_project, null);
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_project, null);
         builder.setView(dialogView);
 
         TextInputEditText etName = dialogView.findViewById(R.id.etProjectName);
@@ -160,13 +164,16 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         LinearLayout llSelectedEmployees = dialogView.findViewById(R.id.llSelectedEmployees);
         LinearLayout participantsContainer = dialogView.findViewById(R.id.participantsContainer);
         TextView tvAllParticipants = dialogView.findViewById(R.id.tvAllParticipants);
+        TextInputLayout tilProjectName = dialogView.findViewById(R.id.tilProjectName);
+
+        addClearErrorTextWatcher(etName,tilProjectName);
 
         // Обработчик изменения состояния чекбокса
         cbIsPublic.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 participantsContainer.setVisibility(View.GONE);
                 tvAllParticipants.setVisibility(View.VISIBLE);
-                llSelectedEmployees.removeAllViews(); // Очищаем выбранных участников
+                llSelectedEmployees.removeAllViews();
             } else {
                 participantsContainer.setVisibility(View.VISIBLE);
                 tvAllParticipants.setVisibility(View.GONE);
@@ -178,26 +185,73 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             loadEmployeesForDialog(actvEmployeeSearch, llSelectedEmployees);
         }
 
-        builder.setPositiveButton("Создать", (dialog, which) -> {
-            String name = etName.getText().toString();
-            String description = etDescription.getText().toString();
-            boolean isPublic = cbIsPublic.isChecked();
-
-            if (!name.isEmpty()) {
-                List<Integer> participantIds = isPublic ?
-                        new ArrayList<>() : // Пустой список для публичного проекта
-                        getSelectedEmployeeIds(llSelectedEmployees);
-
-                createNewProject(name, description, isPublic, participantIds);
-            } else {
-                Toast.makeText(requireContext(),
-                        "Введите название проекта", Toast.LENGTH_SHORT).show();
-            }
-        });
-
+        // Добавляем кнопки
         builder.setNegativeButton("Отмена", null);
+        builder.setPositiveButton("Создать", null);
+
         AlertDialog dialog = builder.create();
         dialog.show();
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setOnClickListener(v -> {
+            String name = etName.getText().toString().trim();
+            String description = etDescription.getText().toString().trim();
+            boolean isPublic = cbIsPublic.isChecked();
+
+            tilProjectName.setError(null); // Сброс ошибок
+            TextView tvParticipantError = dialogView.findViewById(R.id.tvParticipantError);
+
+            boolean isValid = true;
+
+            // Проверка названия
+            if (name.isEmpty()) {
+                tilProjectName.setError("Введите название проекта");
+                isValid = false;
+            } else if (!isValidProjectName(name)) {
+                tilProjectName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                isValid = false;
+            }
+
+            // Проверка участников
+            if (!isPublic) {
+                List<Integer> participantIds = getSelectedEmployeeIds(llSelectedEmployees);
+                if (participantIds.isEmpty()) {
+                    tvParticipantError.setVisibility(View.VISIBLE);
+                    isValid = false;
+                } else {
+                    tvParticipantError.setVisibility(View.GONE);
+                }
+            }
+
+            if (!isValid) return;
+
+            // Если всё ок, создаём проект
+            List<Integer> participantIds = isPublic ?
+                    new ArrayList<>() :
+                    getSelectedEmployeeIds(llSelectedEmployees);
+
+            createNewProject(name, description, isPublic, participantIds);
+            dialog.dismiss();
+        });
+    }
+
+    private boolean isValidProjectName(String name) {
+        return name != null && name.matches("^[А-Я][а-я]*(\\s[А-Яа-я][а-я]*)*$");
+    }
+
+    private void addClearErrorTextWatcher(EditText editText, TextInputLayout textInputLayout) {
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                textInputLayout.setError(null);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
     }
 
     private List<Employee> allEmployees = new ArrayList<>(); // Добавляем поле класса
@@ -453,7 +507,6 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     private void showEditProjectDialog(Project project) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Редактировать проект");
-
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_add_project, null);
         builder.setView(dialogView);
@@ -463,11 +516,18 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         CheckBox cbIsPublic = dialogView.findViewById(R.id.cbIsPublic);
         AutoCompleteTextView actvEmployeeSearch = dialogView.findViewById(R.id.actvEmployeeSearch);
         LinearLayout llSelectedEmployees = dialogView.findViewById(R.id.llSelectedEmployees);
+        LinearLayout participantsContainer = dialogView.findViewById(R.id.participantsContainer); // контейнер с полями
+        TextView tvAllParticipants = dialogView.findViewById(R.id.tvAllParticipants); // текст "Все"
+        TextInputLayout tilProjectName = dialogView.findViewById(R.id.tilProjectName);
+        TextView tvParticipantError = dialogView.findViewById(R.id.tvParticipantError);
 
         // Заполняем поля данными проекта
         etName.setText(project.getName());
         etDescription.setText(project.getDescription());
         cbIsPublic.setChecked(project.isPublic());
+
+        // Настройка текстового ворчера для очистки ошибок
+        addClearErrorTextWatcher(etName, tilProjectName);
 
         // Загружаем текущих участников проекта
         loadCurrentParticipants(project.getId(), llSelectedEmployees);
@@ -475,29 +535,74 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         // Загружаем список сотрудников для выбора
         loadEmployeesForDialog(actvEmployeeSearch, llSelectedEmployees);
 
-        builder.setPositiveButton("Сохранить", (dialog, which) -> {
-            String name = etName.getText().toString();
-            String description = etDescription.getText().toString();
-            boolean isPublic = cbIsPublic.isChecked();
-            List<Integer> participantIds = getSelectedEmployeeIds(llSelectedEmployees);
-
-            if (!name.isEmpty()) {
-                updateProject(project.getId(), name, description, isPublic, participantIds);
+        // Обработчик изменения состояния чекбокса
+        cbIsPublic.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                participantsContainer.setVisibility(View.GONE);
+                tvAllParticipants.setVisibility(View.VISIBLE);
+                llSelectedEmployees.removeAllViews(); // Очистить выбранных участников
             } else {
-                Toast.makeText(requireContext(),
-                        "Введите название проекта", Toast.LENGTH_SHORT).show();
+                participantsContainer.setVisibility(View.VISIBLE);
+                tvAllParticipants.setVisibility(View.GONE);
             }
         });
 
-        builder.setNegativeButton("Отмена", null);
+        // Устанавливаем начальное состояние видимости
+        if (project.isPublic()) {
+            participantsContainer.setVisibility(View.GONE);
+            tvAllParticipants.setVisibility(View.VISIBLE);
+        } else {
+            participantsContainer.setVisibility(View.VISIBLE);
+            tvAllParticipants.setVisibility(View.GONE);
+        }
 
-        // Кнопка удаления проекта (только для создателя)
+        builder.setPositiveButton("Сохранить", null);
+        builder.setNegativeButton("Отмена", null);
         builder.setNeutralButton("Удалить", (dialog, which) -> {
             showDeleteConfirmationDialog(project.getId());
         });
 
         AlertDialog dialog = builder.create();
         dialog.show();
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setOnClickListener(v -> {
+            String name = etName.getText().toString().trim();
+            String description = etDescription.getText().toString().trim();
+            boolean isPublic = cbIsPublic.isChecked();
+
+            tilProjectName.setError(null); // Сброс ошибок
+            tvParticipantError.setVisibility(View.GONE); // Сброс ошибки участников
+            boolean isValid = true;
+
+            // Проверка названия
+            if (name.isEmpty()) {
+                tilProjectName.setError("Введите название проекта");
+                isValid = false;
+            } else if (!isValidProjectName(name)) {
+                tilProjectName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                isValid = false;
+            }
+
+            // Проверка участников
+            if (!isPublic) {
+                List<Integer> participantIds = getSelectedEmployeeIds(llSelectedEmployees);
+                if (participantIds.isEmpty()) {
+                    tvParticipantError.setVisibility(View.VISIBLE);
+                    isValid = false;
+                }
+            }
+
+            if (!isValid) return;
+
+            // Если всё ок, сохраняем изменения
+            List<Integer> participantIds = isPublic ?
+                    new ArrayList<>() :
+                    getSelectedEmployeeIds(llSelectedEmployees);
+
+            updateProject(project.getId(), name, description, isPublic, participantIds);
+            dialog.dismiss();
+        });
     }
 
     private void loadCurrentParticipants(int projectId, LinearLayout container) {

@@ -6,6 +6,7 @@
     android:padding="16dp">
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilProjectName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
@@ -61,6 +62,15 @@
                 android:hint="Добавить участника"
                 android:inputType="text"/>
         </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/tvParticipantError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FF0000"
+            android:paddingStart="8dp"
+            android:visibility="gone"
+            android:text="Выберите хотя бы одного участника"/>
 
         <!-- Список выбранных участников -->
         <TextView
