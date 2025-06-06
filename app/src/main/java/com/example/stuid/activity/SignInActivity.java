@@ -43,18 +43,57 @@ public class SignInActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_in);
+
         tvCreateAccount = findViewById(R.id.tvCreateAccount);
         tvCreateAccount.setOnClickListener(v -> {
             startActivity(new Intent(SignInActivity.this, RegInActivity.class));
         });
+
         tvForgotPassword = findViewById(R.id.tvForgotPassword);
         tvForgotPassword.setOnClickListener(v -> showForgotPasswordDialog());
 
         apiClient = new ApiClient();
         Button loginButton = findViewById(R.id.btnLogin);
+        EditText etLogin = findViewById(R.id.etLogin);
+        EditText etPassword = findViewById(R.id.etPassword);
+
+        TextInputLayout emailInputLayout = findViewById(R.id.emailInputLayout);
+        TextInputLayout passwordInputLayout = findViewById(R.id.passwordInputLayout);
+
         loginButton.setOnClickListener(v -> {
-            String email = ((EditText)findViewById(R.id.etLogin)).getText().toString();
-            String password = ((EditText)findViewById(R.id.etPassword)).getText().toString();
+            String email = etLogin.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
+
+            // Валидация email
+            if (email.isEmpty()) {
+                if (emailInputLayout != null) {
+                    emailInputLayout.setError("Введите email");
+                } else {
+                    etLogin.setError("Введите email");
+                }
+                return;
+            }
+
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                if (emailInputLayout != null) {
+                    emailInputLayout.setError("Введите корректный email");
+                } else {
+                    etLogin.setError("Введите корректный email");
+                }
+                return;
+            }
+
+            // Валидация пароля
+            if (password.isEmpty()) {
+                passwordInputLayout.setError("Введите пароль");
+                return;
+            }
+
+            // Сбрасываем ошибки если они были
+            if (emailInputLayout != null) {
+                emailInputLayout.setError(null);
+            }
+            etPassword.setError(null);
 
             apiClient.loginUser(email, password, new AuthCallback() {
                 @Override
@@ -74,9 +113,43 @@ public class SignInActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String error) {
                     runOnUiThread(() -> {
-                        Toast.makeText(SignInActivity.this, "Login failed: " + error, Toast.LENGTH_LONG).show();
+                        Toast.makeText(SignInActivity.this, "Ошибка авторизации: " + error, Toast.LENGTH_LONG).show();
                     });
                 }
+            });
+
+            etLogin.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (emailInputLayout != null) {
+                        emailInputLayout.setError(null);
+                    } else {
+                        etLogin.setError(null);
+                    }
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+
+            etPassword.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (passwordInputLayout != null) {
+                        passwordInputLayout.setError(null);
+                    } else {
+                        etPassword.setError(null);
+                    }
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
             });
         });
     }
