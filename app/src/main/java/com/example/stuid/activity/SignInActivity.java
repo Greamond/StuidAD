@@ -54,11 +54,16 @@ public class SignInActivity extends AppCompatActivity {
 
         apiClient = new ApiClient();
         Button loginButton = findViewById(R.id.btnLogin);
-        EditText etLogin = findViewById(R.id.etLogin);
-        EditText etPassword = findViewById(R.id.etPassword);
 
         TextInputLayout emailInputLayout = findViewById(R.id.emailInputLayout);
         TextInputLayout passwordInputLayout = findViewById(R.id.passwordInputLayout);
+
+        EditText etLogin = findViewById(R.id.etLogin);
+        EditText etPassword = findViewById(R.id.etPassword);
+
+        addClearErrorTextWatcher(etLogin, emailInputLayout);
+        addClearErrorTextWatcher(etPassword, passwordInputLayout);
+
 
         loginButton.setOnClickListener(v -> {
             String email = etLogin.getText().toString().trim();
@@ -117,40 +122,21 @@ public class SignInActivity extends AppCompatActivity {
                     });
                 }
             });
+        });
+    }
 
-            etLogin.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+    private void addClearErrorTextWatcher(EditText editText, TextInputLayout textInputLayout) {
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    if (emailInputLayout != null) {
-                        emailInputLayout.setError(null);
-                    } else {
-                        etLogin.setError(null);
-                    }
-                }
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                textInputLayout.setError(null);
+            }
 
-                @Override
-                public void afterTextChanged(Editable s) {}
-            });
-
-            etPassword.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    if (passwordInputLayout != null) {
-                        passwordInputLayout.setError(null);
-                    } else {
-                        etPassword.setError(null);
-                    }
-                }
-
-                @Override
-                public void afterTextChanged(Editable s) {}
-            });
+            @Override
+            public void afterTextChanged(Editable s) {}
         });
     }
 

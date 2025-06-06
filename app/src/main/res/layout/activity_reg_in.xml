@@ -36,6 +36,7 @@
 
         <!-- Поле для фамилии -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilLastName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -52,6 +53,7 @@
 
         <!-- Поле для имени -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilFirstName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -68,6 +70,7 @@
 
         <!-- Поле для отчества -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilMiddleName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -84,6 +87,7 @@
 
         <!-- Поле для email -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEmail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -100,6 +104,7 @@
 
         <!-- Поле для пароля -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -117,6 +122,7 @@
 
         <!-- Поле для повторного пароля -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilConfirmPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
