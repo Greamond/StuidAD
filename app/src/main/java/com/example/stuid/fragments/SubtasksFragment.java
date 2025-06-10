@@ -96,6 +96,7 @@ public class SubtasksFragment extends Fragment {
     private SubtaskColumnsAdapter columnsAdapter;
     private List<SubtaskColumn> columns = new ArrayList<>();
     private static Subtask draggedTask;
+    private boolean isPublicProject;
 
     public static void setDraggedSubtask (Subtask subtask) {
         draggedTask = subtask;
@@ -110,6 +111,7 @@ public class SubtasksFragment extends Fragment {
         super.onCreate(savedInstanceState);
         prefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
         currentUserId = prefs.getInt("employee_id", -1);
+        isPublicProject = getArguments().getBoolean("isPublicProject");
 
         if (getArguments() != null) {
             projectId = getArguments().getInt("projectId", -1);
@@ -295,7 +297,9 @@ public class SubtasksFragment extends Fragment {
         checkEditPermission(subtask, () -> {
             if (canEditTask) {
                 draggedTask = subtask;
-                showTaskDialog(subtask);
+                loadTaskAssignees(taskId, () -> {
+                    showTaskDialog(subtask, taskAssignees);
+                });
             } else {
                 Toast.makeText(requireContext(), "Нет прав на редактирование", Toast.LENGTH_SHORT).show();
             }
@@ -700,26 +704,6 @@ public class SubtasksFragment extends Fragment {
         container.addView(view);
     }
 
-    private void loadProjectParticipants() {
-        String token = prefs.getString("jwt_token", null);
-        if (token == null) return;
-
-        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
-            @Override
-            public void onSuccess(List<Employee> participants) {
-                requireActivity().runOnUiThread(() -> {
-                    projectParticipants.clear();
-                    projectParticipants.addAll(participants);
-                });
-            }
-
-            @Override
-            public void onFailure(String error) {
-                Log.e("TasksFragment", "Error loading participants: " + error);
-            }
-        });
-    }
-
     private void checkEditPermission(Subtask subtask, Runnable onSuccess) {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
@@ -796,20 +780,31 @@ public class SubtasksFragment extends Fragment {
         });
     }
 
-    private void showTaskDialog(Subtask subtask) {
-        // Сначала проверяем права
+    private void showTaskDialog(Subtask subtask, List<Employee> availableAssignees) {
         checkEditPermission(subtask, () -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
             builder.setTitle(subtask.getName());
 
-            View dialogView = LayoutInflater.from(requireContext())
-                    .inflate(R.layout.dialog_task, null);
+            View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_task, null);
             builder.setView(dialogView);
 
             EditText etName = dialogView.findViewById(R.id.etTaskName);
             EditText etDescription = dialogView.findViewById(R.id.etTaskDescription);
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
+            TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName);
+
+            TextView tvAssigneeError = new TextView(requireContext());
+            tvAssigneeError.setId(View.generateViewId());
+            tvAssigneeError.setTextColor(Color.RED);
+            tvAssigneeError.setTextSize(14);
+            tvAssigneeError.setVisibility(View.GONE);
+
+            ViewGroup parent = (ViewGroup) llSelectedAssignees.getParent();
+            int index = parent.indexOfChild(llSelectedAssignees);
+            parent.addView(tvAssigneeError, index + 1);
+
+            llSelectedAssignees.removeAllViews();
 
             // Заполняем поля
             etName.setText(subtask.getName());
@@ -831,38 +826,89 @@ public class SubtasksFragment extends Fragment {
 
             // Показываем текущего ответственного
             int responsibleId = subtask.getResponsibleId();
-            if (responsibleId != -1) { // Предположим, что -1 — значение по умолчанию
+            if (responsibleId != -1) {
                 for (Employee employee : projectParticipants) {
                     if (employee.getEmployeeId() == responsibleId) {
-                        addAssigneeView(employee, llSelectedAssignees, false); // false — нельзя удалить
+                        addAssigneeView(employee, llSelectedAssignees, false); // нельзя удалить
                         break;
                     }
                 }
             }
 
-            // Настройка автодополнения для ответственного при редактировании
-            if (canEditTask) {
-                setupAssigneeSearch(actvAssigneeSearch, llSelectedAssignees);
-            }
+            ArrayAdapter<Employee> adapter = new ArrayAdapter<>(requireContext(),
+                    android.R.layout.simple_dropdown_item_1line,
+                    availableAssignees);
 
-            // Кнопки диалога
-            builder.setPositiveButton("Закрыть", null);
+            actvAssigneeSearch.setAdapter(adapter);
+
+            actvAssigneeSearch.setOnItemClickListener((parentAssign, view, position, id) -> {
+                Employee selected = adapter.getItem(position);
+                if (selected != null) {
+                    addAssigneeView(selected, llSelectedAssignees, true);
+                    actvAssigneeSearch.setText("");
+                    tvAssigneeError.setVisibility(View.GONE);
+                }
+            });
+
+            builder.setPositiveButton("Закрыть", null); // будет переопределён позже
 
             if (canEditTask && (currentUserId == subtask.getCreatorId() || currentUserId == projectCreatorId)) {
-                builder.setNegativeButton("Удалить", (dialog, which) -> {
-                    showDeleteConfirmationDialog(subtask);
-                });
+                builder.setNegativeButton("Удалить", null); // будет переопределён позже
             }
 
             if (canEditTask) {
-                builder.setNeutralButton("Сохранить", (dialog, which) -> {
-                    updateSubtask(subtask.getId(),
-                            etName.getText().toString(),
-                            etDescription.getText().toString());
-                });
+                builder.setNeutralButton("Сохранить", null); // будет переопределён позже
             }
 
-            builder.show();
+            // Теперь создаём диалог
+            AlertDialog dialog = builder.create();
+            dialog.show();
+
+            // Назначаем обработчики кнопок ПОСЛЕ show()
+            Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            positiveButton.setOnClickListener(v -> dialog.dismiss());
+
+            if (canEditTask && (currentUserId == subtask.getCreatorId() || currentUserId == projectCreatorId)) {
+                Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+                if (negativeButton != null) {
+                    negativeButton.setOnClickListener(v -> {
+                        showDeleteConfirmationDialog(subtask);
+                    });
+                }
+            }
+
+            if (canEditTask) {
+                Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+                if (neutralButton != null) {
+                    neutralButton.setOnClickListener(v -> {
+                        String name = etName.getText().toString().trim();
+                        tilTaskName.setError(null);
+                        tvAssigneeError.setVisibility(View.GONE);
+                        boolean isValid = true;
+
+                        // Валидация названия
+                        if (name.isEmpty()) {
+                            tilTaskName.setError("Введите название задачи");
+                            isValid = false;
+                        } else if (!isValidTaskName(name)) {
+                            tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                            isValid = false;
+                        }
+
+                        // Валидация ответственного
+                        if (llSelectedAssignees.getChildCount() == 0 && !isPublicProject) {
+                            tvAssigneeError.setText("Выберите хотя бы одного ответственного");
+                            tvAssigneeError.setVisibility(View.VISIBLE);
+                            isValid = false;
+                        }
+
+                        if (!isValid) return;
+
+                        updateSubtask(subtask.getId(), name, etDescription.getText().toString());
+                        dialog.dismiss();
+                    });
+                }
+            }
         });
     }
 

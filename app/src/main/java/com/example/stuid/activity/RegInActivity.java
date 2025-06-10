@@ -112,7 +112,7 @@ public class RegInActivity extends AppCompatActivity {
                 isValid = false;
             }
 
-            if (!middleName.isEmpty()){
+            if (middleName.isEmpty()){
                 tilMiddleName.setError("Отчество обязательно");
                 isValid = false;
             } else if (!middleName.matches(NAME_REGEX)) {

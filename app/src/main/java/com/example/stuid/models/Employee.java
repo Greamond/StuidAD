@@ -38,6 +38,10 @@ public class Employee {
 
     public String getPhoto() { return Photo; }
 
+    public String getLastName() {
+        return LastName;
+    }
+
     public void setEmployeeId(int employeeId) {
         EmployeeId = employeeId;
     }

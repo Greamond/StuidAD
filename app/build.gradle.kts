@@ -42,6 +42,8 @@ dependencies {
     implementation(libs.navigation.ui)
     implementation(libs.swiperefreshlayout)
     testImplementation(libs.junit)
+    testImplementation ("org.mockito:mockito-android:5.7.0")
     androidTestImplementation(libs.ext.junit)
+    androidTestImplementation ("org.mockito:mockito-android:5.7.0")
     androidTestImplementation(libs.espresso.core)
 }
