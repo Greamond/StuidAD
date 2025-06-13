@@ -929,6 +929,7 @@ public class ApiClient {
                         employee.setFirstName(json.getString("FirstName"));
                         employee.setLastName(json.getString("LastName"));
                         employee.setMiddleName(json.getString("MiddleName"));
+                        employee.setEmail(json.getString("Email"));
                         employees.add(employee);
                     }
                     callback.onSuccess(employees);

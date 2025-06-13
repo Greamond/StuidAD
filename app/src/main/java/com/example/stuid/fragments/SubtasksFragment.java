@@ -20,6 +20,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Filter;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -532,17 +533,7 @@ public class SubtasksFragment extends Fragment {
         AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
         LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
         TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName);
-
-        TextView tvAssigneeError = new TextView(requireContext());
-        tvAssigneeError.setId(View.generateViewId());
-        tvAssigneeError.setTextColor(Color.RED);
-        tvAssigneeError.setTextSize(14);
-        tvAssigneeError.setVisibility(View.GONE);
-
-        // Вставляем его после блока с выбранными ответственными
-        ViewGroup parent = (ViewGroup) llSelectedAssignees.getParent();
-        int index = parent.indexOfChild(llSelectedAssignees);
-        parent.addView(tvAssigneeError, index + 1); // после llSelectedAssignees
+        TextView tvAssigneeError = dialogView.findViewById(R.id.tvParticipantError);
 
         llSelectedAssignees.removeAllViews();
 
@@ -556,7 +547,7 @@ public class SubtasksFragment extends Fragment {
                 View view = super.getView(position, convertView, parent);
                 Employee employee = getItem(position);
                 if (employee != null) {
-                    ((TextView) view).setText(employee.getFullName());
+                    ((TextView) view).setText(employee.getFullName() + " (" + employee.getEmail() + ")");
                 }
                 return view;
             }
@@ -749,37 +740,6 @@ public class SubtasksFragment extends Fragment {
         });
     }
 
-    private void setupAssigneeSearch(AutoCompleteTextView actvAssigneeSearch,
-                                     LinearLayout llSelectedAssignees) {
-        Log.d("SubtasksFragment", "Setting up assignee search with " + projectParticipants.size() + " participants");
-
-        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                projectParticipants
-        ) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                Employee employee = getItem(position);
-                if (employee != null) {
-                    ((TextView) view).setText(employee.getFullName());
-                }
-                return view;
-            }
-        };
-
-        actvAssigneeSearch.setAdapter(adapter);
-        actvAssigneeSearch.setOnItemClickListener((parent, view, position, id) -> {
-            Employee selected = adapter.getItem(position);
-            if (selected != null) {
-                selectedAssignee = selected;
-                addAssigneeView(selected, llSelectedAssignees, true);
-                actvAssigneeSearch.setText(""); // Очистка поля ввода
-            }
-        });
-    }
-
     private void showTaskDialog(Subtask subtask, List<Employee> availableAssignees) {
         checkEditPermission(subtask, () -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
@@ -793,16 +753,7 @@ public class SubtasksFragment extends Fragment {
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
             TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName);
-
-            TextView tvAssigneeError = new TextView(requireContext());
-            tvAssigneeError.setId(View.generateViewId());
-            tvAssigneeError.setTextColor(Color.RED);
-            tvAssigneeError.setTextSize(14);
-            tvAssigneeError.setVisibility(View.GONE);
-
-            ViewGroup parent = (ViewGroup) llSelectedAssignees.getParent();
-            int index = parent.indexOfChild(llSelectedAssignees);
-            parent.addView(tvAssigneeError, index + 1);
+            TextView tvAssigneeError = dialogView.findViewById(R.id.tvParticipantError);
 
             llSelectedAssignees.removeAllViews();
 
@@ -829,24 +780,38 @@ public class SubtasksFragment extends Fragment {
             if (responsibleId != -1) {
                 for (Employee employee : projectParticipants) {
                     if (employee.getEmployeeId() == responsibleId) {
-                        addAssigneeView(employee, llSelectedAssignees, false); // нельзя удалить
+                        selectedAssignee = employee;
+                        addAssigneeView(employee, llSelectedAssignees, false);
                         break;
                     }
                 }
             }
 
-            ArrayAdapter<Employee> adapter = new ArrayAdapter<>(requireContext(),
+            ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
+                    requireContext(),
                     android.R.layout.simple_dropdown_item_1line,
-                    availableAssignees);
+                    availableAssignees
+            ) {
+                @Override
+                public View getView(int position, View convertView, ViewGroup parent) {
+                    View view = super.getView(position, convertView, parent);
+                    Employee employee = getItem(position);
+                    if (employee != null) {
+                        ((TextView) view).setText(employee.getFullName() + " (" + employee.getEmail() + ")");
+                    }
+                    return view;
+                }
+            };
 
             actvAssigneeSearch.setAdapter(adapter);
 
             actvAssigneeSearch.setOnItemClickListener((parentAssign, view, position, id) -> {
                 Employee selected = adapter.getItem(position);
                 if (selected != null) {
+                    selectedAssignee = selected;
                     addAssigneeView(selected, llSelectedAssignees, true);
                     actvAssigneeSearch.setText("");
-                    tvAssigneeError.setVisibility(View.GONE);
+                    tvAssigneeError.setVisibility(View.GONE); // скрываем ошибку
                 }
             });
 
@@ -873,6 +838,7 @@ public class SubtasksFragment extends Fragment {
                 if (negativeButton != null) {
                     negativeButton.setOnClickListener(v -> {
                         showDeleteConfirmationDialog(subtask);
+                        dialog.dismiss();
                     });
                 }
             }
@@ -1064,7 +1030,6 @@ public class SubtasksFragment extends Fragment {
             @Override
             public void onSuccess() {
                 requireActivity().runOnUiThread(() -> {
-                    showToast("Chapter updated successfully");
                     Log.e("Server", "Chapter updated successfully");
                 });
             }

@@ -743,16 +743,51 @@ public class TasksFragment extends Fragment {
     private void setupAssigneeSearch(AutoCompleteTextView actvAssigneeSearch, LinearLayout llSelectedAssignees, boolean isPublicProject) {
         List<Employee> assignees = isPublicProject ? allEmployees : projectParticipants;
 
-        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, assignees) {
+        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                assignees
+        ) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                Employee employee = (Employee) getItem(position);
+                TextView view = (TextView) super.getView(position, convertView, parent);
+                Employee employee = getItem(position);
                 if (employee != null) {
-                    ((TextView) view).setText(employee.getFullName() + " (" + employee.getEmail() + ")");
+                    view.setText(employee.getFullName() + " (" + employee.getEmail() + ")");
                 }
                 return view;
+            }
+
+            @Override
+            public Filter getFilter() {
+                return new Filter() {
+                    @Override
+                    protected FilterResults performFiltering(CharSequence constraint) {
+                        List<Employee> filteredList = new ArrayList<>();
+                        if (constraint == null || constraint.length() == 0) {
+                            filteredList.addAll(assignees);
+                        } else {
+                            String filterPattern = constraint.toString().toLowerCase().trim();
+                            for (Employee employee : assignees) {
+                                if (employee.getFullName().toLowerCase().contains(filterPattern) ||
+                                        employee.getEmail().toLowerCase().contains(filterPattern)) {
+                                    filteredList.add(employee);
+                                }
+                            }
+                        }
+                        FilterResults results = new FilterResults();
+                        results.values = filteredList;
+                        results.count = filteredList.size();
+                        return results;
+                    }
+
+                    @Override
+                    protected void publishResults(CharSequence constraint, FilterResults results) {
+                        clear();
+                        addAll((List) results.values);
+                        notifyDataSetChanged();
+                    }
+                };
             }
         };
 
@@ -783,7 +818,6 @@ public class TasksFragment extends Fragment {
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
             TextView tvParticipantError = dialogView.findViewById(R.id.tvParticipantError);
-
             TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName);
 
             // Заполняем поля
@@ -817,6 +851,7 @@ public class TasksFragment extends Fragment {
             if (canEditTask && (currentUserId == task.getCreatorId() || currentUserId == projectCreatorId)) {
                 builder.setNegativeButton("Удалить", (dialog, which) -> {
                     showDeleteConfirmationDialog(task);
+                    dialog.dismiss();
                 });
             }
 
@@ -1064,7 +1099,6 @@ public class TasksFragment extends Fragment {
             @Override
             public void onSuccess() {
                 requireActivity().runOnUiThread(() -> {
-                    showToast("Chapter updated successfully");
                     Log.e("Server", "Chapter updated successfully");
                 });
             }
