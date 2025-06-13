@@ -19,6 +19,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Filter;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -505,14 +506,12 @@ public class TasksFragment extends Fragment {
         AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
         LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
         TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName); // должен быть в разметке
+        TextView tvParticipantError = dialogView.findViewById(R.id.tvParticipantError);
 
         selectedAssignees.clear();
         llSelectedAssignees.removeAllViews();
 
-        List<Employee> assignees = isPublicProject ? allEmployees : projectParticipants;
-
-        ArrayAdapter<Employee> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, assignees);
+        ArrayAdapter<Employee> adapter = getEmployeeArrayAdapter(isPublicProject);
 
         actvAssigneeSearch.setAdapter(adapter);
 
@@ -538,6 +537,7 @@ public class TasksFragment extends Fragment {
             int creatorId = prefs.getInt("employee_id", -1);
 
             tilTaskName.setError(null);
+            tvParticipantError.setVisibility(View.GONE);
             boolean isValid = true;
 
             // Проверка имени
@@ -551,6 +551,7 @@ public class TasksFragment extends Fragment {
 
             // Проверка ответственных (только для приватных проектов)
             if (!isPublicProject && selectedAssignees.isEmpty()) {
+                tvParticipantError.setVisibility(View.VISIBLE);
                 isValid = false;
             }
 
@@ -606,6 +607,61 @@ public class TasksFragment extends Fragment {
                 }
             });
         });
+    }
+
+    @NonNull
+    private ArrayAdapter<Employee> getEmployeeArrayAdapter(boolean isPublicProject) {
+        List<Employee> assignees = isPublicProject ? allEmployees : projectParticipants;
+
+        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                assignees
+        ) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView view = (TextView) super.getView(position, convertView, parent);
+                Employee employee = getItem(position);
+                if (employee != null) {
+                    view.setText(employee.getFullName() + " (" + employee.getEmail() + ")");
+                }
+                return view;
+            }
+
+            @Override
+            public Filter getFilter() {
+                return new Filter() {
+                    @Override
+                    protected FilterResults performFiltering(CharSequence constraint) {
+                        // Реализация фильтрации по имени и email
+                        List<Employee> filteredList = new ArrayList<>();
+                        if (constraint == null || constraint.length() == 0) {
+                            filteredList.addAll(projectParticipants);
+                        } else {
+                            String filterPattern = constraint.toString().toLowerCase().trim();
+                            for (Employee employee : projectParticipants) {
+                                if (employee.getFullName().toLowerCase().contains(filterPattern) ||
+                                        employee.getEmail().toLowerCase().contains(filterPattern)) {
+                                    filteredList.add(employee);
+                                }
+                            }
+                        }
+                        FilterResults results = new FilterResults();
+                        results.values = filteredList;
+                        results.count = filteredList.size();
+                        return results;
+                    }
+
+                    @Override
+                    protected void publishResults(CharSequence constraint, FilterResults results) {
+                        clear();
+                        addAll((List) results.values);
+                        notifyDataSetChanged();
+                    }
+                };
+            }
+        };
+        return adapter;
     }
 
     private boolean isValidTaskName(String name) {
@@ -694,7 +750,7 @@ public class TasksFragment extends Fragment {
                 View view = super.getView(position, convertView, parent);
                 Employee employee = (Employee) getItem(position);
                 if (employee != null) {
-                    ((TextView) view).setText(employee.getFullName());
+                    ((TextView) view).setText(employee.getFullName() + " (" + employee.getEmail() + ")");
                 }
                 return view;
             }
@@ -726,6 +782,7 @@ public class TasksFragment extends Fragment {
             EditText etDescription = dialogView.findViewById(R.id.etTaskDescription);
             AutoCompleteTextView actvAssigneeSearch = dialogView.findViewById(R.id.actvAssigneeSearch);
             LinearLayout llSelectedAssignees = dialogView.findViewById(R.id.llSelectedAssignees);
+            TextView tvParticipantError = dialogView.findViewById(R.id.tvParticipantError);
 
             TextInputLayout tilTaskName = dialogView.findViewById(R.id.tilTaskName);
 
@@ -773,6 +830,7 @@ public class TasksFragment extends Fragment {
                 String description = etDescription.getText().toString().trim();
 
                 tilTaskName.setError(null); // очистка предыдущей ошибки
+                tvParticipantError.setVisibility(View.GONE);
 
                 boolean isValid = true;
 
@@ -782,6 +840,11 @@ public class TasksFragment extends Fragment {
                     isValid = false;
                 } else if (!isValidTaskName(name)) {
                     tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                    isValid = false;
+                }
+
+                if (selectedAssignees.isEmpty()){
+                    tvParticipantError.setVisibility(View.VISIBLE);
                     isValid = false;
                 }
 
