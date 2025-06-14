@@ -81,6 +81,7 @@ public class SubtasksFragment extends Fragment {
     private int projectId;
     private int projectCreatorId;
     private int taskId;
+    private String taskName;
     private List<Employee> projectParticipants = new ArrayList<>();
     private List<Employee> taskAssignees = new ArrayList<>();
     private Employee selectedAssignee = null;
@@ -98,6 +99,7 @@ public class SubtasksFragment extends Fragment {
     private List<SubtaskColumn> columns = new ArrayList<>();
     private static Subtask draggedTask;
     private boolean isPublicProject;
+    private TextView headerTitle;
 
     public static void setDraggedSubtask (Subtask subtask) {
         draggedTask = subtask;
@@ -118,6 +120,7 @@ public class SubtasksFragment extends Fragment {
             projectId = getArguments().getInt("projectId", -1);
             projectCreatorId = getArguments().getInt("creatorId", -1);
             taskId = getArguments().getInt("taskId", -1);
+            taskName = getArguments().getString("taskName", "Неопределён");
         }
     }
 
@@ -129,6 +132,14 @@ public class SubtasksFragment extends Fragment {
         // Инициализация элементов UI
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
+        headerTitle = view.findViewById(R.id.headerTitle);
+
+        String displayTaskName = taskName;
+        if (taskName.length() > 15) {
+            displayTaskName = taskName.substring(0, 12) + "...";
+        }
+        headerTitle.setText("Подзадачи задачи: " + displayTaskName);
+
         apiClient = new ApiClient();
 
         // Настройка RecyclerView для колонок
@@ -369,8 +380,8 @@ public class SubtasksFragment extends Fragment {
                     return;
                 }
 
-                if (!isValidColumnName(name)) {
-                    textInputLayout.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                if (!isValidName(name)) {
+                    textInputLayout.setError("Название должно содержать только русские, английские символы или цифры");
                     return;
                 }
 
@@ -387,7 +398,7 @@ public class SubtasksFragment extends Fragment {
         dialog.show();
     }
 
-    private boolean isValidColumnName(String name) {
+    private boolean isValidName(String name) {
         if (name == null || name.trim().isEmpty()) return false;
 
         String[] words = name.trim().split(" ");
@@ -399,7 +410,7 @@ public class SubtasksFragment extends Fragment {
         }
 
         // Только русские буквы и пробелы
-        return name.matches("^[А-ЯЁ][а-яё\\s\\-]*$");
+        return name.matches("^[A-Za-zА-Яа-яЁё0-9]+(\\s[A-Za-zА-Яа-яЁё0-9]*)*$");
     }
 
     private void showDeleteColumnConfirmationDialog(SubtaskColumn column) {
@@ -584,7 +595,7 @@ public class SubtasksFragment extends Fragment {
             if (name.isEmpty()) {
                 tilTaskName.setError("Введите название подзадачи");
                 isValid = false;
-            } else if (!isValidTaskName(name)) {
+            } else if (!isValidName(name)) {
                 tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
                 isValid = false;
             }
@@ -656,21 +667,6 @@ public class SubtasksFragment extends Fragment {
         });
 
         dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> dialog.dismiss());
-    }
-
-    private boolean isValidTaskName(String name) {
-        if (name == null || name.trim().isEmpty()) return false;
-
-        String[] words = name.trim().split(" ");
-        if (words.length == 0) return false;
-
-        String firstWord = words[0];
-        if (firstWord.isEmpty() || !Character.isUpperCase(firstWord.codePointAt(0))) {
-            return false;
-        }
-
-        // Проверка: только кириллица + пробелы
-        return name.matches("^[А-ЯЁ][а-яё\\s\\-]*$");
     }
 
     private void addAssigneeView(Employee employee, LinearLayout container, boolean removable) {
@@ -856,8 +852,8 @@ public class SubtasksFragment extends Fragment {
                         if (name.isEmpty()) {
                             tilTaskName.setError("Введите название задачи");
                             isValid = false;
-                        } else if (!isValidTaskName(name)) {
-                            tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                        } else if (!isValidName(name)) {
+                            tilTaskName.setError("Название должно содержать только русские, английские символы или цифры");
                             isValid = false;
                         }
 

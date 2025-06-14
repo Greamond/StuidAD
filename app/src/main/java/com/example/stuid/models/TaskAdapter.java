@@ -132,6 +132,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             Bundle args = new Bundle();
             args.putInt("projectId", task.getProjectId());
             args.putInt("taskId", task.getId());
+            args.putString("taskName", task.getName());
             args.putInt("creatorId", task.getCreatorId());
 
             Navigation.findNavController(view)

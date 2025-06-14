@@ -208,7 +208,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 tilProjectName.setError("Введите название проекта");
                 isValid = false;
             } else if (!isValidProjectName(name)) {
-                tilProjectName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                tilProjectName.setError("Название должно содержать только русские, английские символы или цифры");
                 isValid = false;
             }
 
@@ -236,7 +236,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private boolean isValidProjectName(String name) {
-        return name != null && name.matches("^[А-Я][а-я]*(\\s[А-Яа-я][а-я]*)*$");
+        return name != null && name.matches("^[A-Za-zА-Яа-яЁё0-9]+(\\s[A-Za-zА-Яа-яЁё0-9]*)*$");
     }
 
     private void addClearErrorTextWatcher(EditText editText, TextInputLayout textInputLayout) {
@@ -774,6 +774,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         Bundle args = new Bundle();
         args.putBoolean("isPublicProject", project.isPublic());
         args.putInt("projectId", project.getId());
+        args.putString("projectName", project.getName());
         args.putInt("creatorId", project.getCreator());
 
         Navigation.findNavController(requireView())

@@ -3,16 +3,11 @@ package com.example.stuid.fragments;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -29,10 +24,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -51,7 +43,6 @@ import com.example.stuid.api.TasksCallback;
 import com.example.stuid.models.ColumnsAdapter;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Task;
-import com.example.stuid.models.TaskAdapter;
 import com.example.stuid.models.TaskColumn;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -70,6 +61,7 @@ import java.util.function.Consumer;
 
 public class TasksFragment extends Fragment {
     private int projectId;
+    private String projectName;
     private int projectCreatorId;
     private List<Employee> allEmployees = new ArrayList<>();
     private List<Employee> projectParticipants = new ArrayList<>();
@@ -88,6 +80,7 @@ public class TasksFragment extends Fragment {
     private List<TaskColumn> columns = new ArrayList<>();
     private static Task draggedTask;
     private boolean isPublicProject;
+    private TextView headerTitle;
 
     public static void setDraggedTask(Task task) {
         draggedTask = task;
@@ -107,6 +100,7 @@ public class TasksFragment extends Fragment {
         if (getArguments() != null) {
             projectId = getArguments().getInt("projectId", -1);
             projectCreatorId = getArguments().getInt("creatorId", -1);
+            projectName = getArguments().getString("projectName", "Неопределён");
         }
     }
 
@@ -118,6 +112,14 @@ public class TasksFragment extends Fragment {
         // Инициализация элементов UI
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
+        headerTitle = view.findViewById(R.id.headerTitle);
+
+        String displayProjectName = projectName;
+        if (projectName.length() > 15) {
+            displayProjectName = projectName.substring(0, 12) + "...";
+        }
+        headerTitle.setText("Задачи проекта: " + displayProjectName);
+
         apiClient = new ApiClient();
 
         // Настройка RecyclerView для колонок
@@ -350,8 +352,8 @@ public class TasksFragment extends Fragment {
                     return;
                 }
 
-                if (!isValidColumnName(name)) {
-                    textInputLayout.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
+                if (!isValidName(name)) {
+                    textInputLayout.setError("Название должно содержать только русские, английские символы или цифры");
                     return;
                 }
 
@@ -366,21 +368,6 @@ public class TasksFragment extends Fragment {
         });
 
         dialog.show();
-    }
-
-    private boolean isValidColumnName(String name) {
-        if (name == null || name.trim().isEmpty()) return false;
-
-        String[] words = name.trim().split(" ");
-        if (words.length == 0) return false;
-
-        String firstWord = words[0];
-        if (firstWord.isEmpty() || !Character.isUpperCase(firstWord.codePointAt(0))) {
-            return false;
-        }
-
-        // Проверяем, что текст содержит только русские буквы и пробелы
-        return name.matches("^[А-ЯЁ][а-яё\\s\\-]*$");
     }
 
     private void showDeleteColumnConfirmationDialog(TaskColumn column) {
@@ -517,10 +504,16 @@ public class TasksFragment extends Fragment {
 
         actvAssigneeSearch.setOnItemClickListener((parent, view, position, id) -> {
             Employee selected = adapter.getItem(position);
-            if (selected != null && !selectedAssignees.contains(selected)) {
-                selectedAssignees.add(selected);
-                addAssigneeView(selected, llSelectedAssignees, true);
-                actvAssigneeSearch.setText("");
+            if (selected != null) {
+                // Проверяем, не выбран ли уже этот сотрудник
+                if (!selectedAssignees.contains(selected)) {
+                    selectedAssignees.add(selected);
+                    addAssigneeView(selected, llSelectedAssignees, true);
+                    actvAssigneeSearch.setText("");
+                } else {
+                    actvAssigneeSearch.setText("");
+                    Toast.makeText(requireContext(), "Этот сотрудник уже выбран", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -544,7 +537,7 @@ public class TasksFragment extends Fragment {
             if (name.isEmpty()) {
                 tilTaskName.setError("Введите название задачи");
                 isValid = false;
-            } else if (!isValidTaskName(name)) {
+            } else if (!isValidName(name)) {
                 tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
                 isValid = false;
             }
@@ -664,7 +657,7 @@ public class TasksFragment extends Fragment {
         return adapter;
     }
 
-    private boolean isValidTaskName(String name) {
+    private boolean isValidName(String name) {
         if (name == null || name.trim().isEmpty()) return false;
 
         // Проверяем, что первое слово начинается с заглавной буквы
@@ -674,9 +667,7 @@ public class TasksFragment extends Fragment {
         if (firstWord.isEmpty() || !Character.isUpperCase(firstWord.codePointAt(0))) {
             return false;
         }
-
-        // Проверяем, что текст на русском (только кириллица + пробелы)
-        return name.matches("^[А-ЯЁ][а-яё\\s\\-]*$");
+        return name.matches("^[A-Za-zА-Яа-яЁё0-9]+(\\s[A-Za-zА-Яа-яЁё0-9]*)*$");
     }
 
     private void addAssigneeView(Employee employee, LinearLayout container, boolean removable) {
@@ -795,10 +786,16 @@ public class TasksFragment extends Fragment {
 
         actvAssigneeSearch.setOnItemClickListener((parent, view, position, id) -> {
             Employee selected = adapter.getItem(position);
-            if (selected != null && !selectedAssignees.contains(selected)) {
-                selectedAssignees.add(selected);
-                addAssigneeView(selected, llSelectedAssignees, true);
-                actvAssigneeSearch.setText("");
+            if (selected != null) {
+                // Проверяем, не выбран ли уже этот сотрудник
+                if (!selectedAssignees.contains(selected)) {
+                    selectedAssignees.add(selected);
+                    addAssigneeView(selected, llSelectedAssignees, true);
+                    actvAssigneeSearch.setText("");
+                } else {
+                    actvAssigneeSearch.setText("");
+                    Toast.makeText(requireContext(), "Этот сотрудник уже выбран", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -873,7 +870,7 @@ public class TasksFragment extends Fragment {
                 if (name.isEmpty()) {
                     tilTaskName.setError("Введите название задачи");
                     isValid = false;
-                } else if (!isValidTaskName(name)) {
+                } else if (!isValidName(name)) {
                     tilTaskName.setError("Название должно начинаться с заглавной буквы и содержать только русские символы");
                     isValid = false;
                 }
@@ -1091,7 +1088,7 @@ public class TasksFragment extends Fragment {
     private void updateTaskChapter(int taskId, int chapterId) {
         String token = prefs.getString("jwt_token", null);
         if (token == null) {
-            showToast("Authorization required");
+            showToast("Необходима авторизация");
             return;
         }
 
@@ -1106,7 +1103,7 @@ public class TasksFragment extends Fragment {
             @Override
             public void onFailure(String error) {
                 requireActivity().runOnUiThread(() -> {
-                    showToast("Update failed: " + error);
+                    showToast("Ошибка переноса");
                     Log.e("Server","Update failed: " + error);
                 });
             }
