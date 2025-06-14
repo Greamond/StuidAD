@@ -6,6 +6,7 @@ public class Project {
     private String Description;
     private boolean IsPublic;
     private int Creator;
+    private boolean IsArchive;
 
     public Project() {
     }
@@ -16,6 +17,15 @@ public class Project {
         Description = description;
         IsPublic = isPublic;
         Creator = creator;
+    }
+
+    public Project(int id, String name, String description, boolean isPublic, int creator, boolean isArchive) {
+        Id = id;
+        Name = name;
+        Description = description;
+        IsPublic = isPublic;
+        Creator = creator;
+        IsArchive = isArchive;
     }
 
     public int getId() {
@@ -56,5 +66,9 @@ public class Project {
 
     public void setCreator(int creator) {
         Creator = creator;
+    }
+
+    public boolean isArchive() {
+        return IsArchive;
     }
 }

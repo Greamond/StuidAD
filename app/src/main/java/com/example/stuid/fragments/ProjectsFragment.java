@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.telecom.Call;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -23,6 +24,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -44,8 +46,12 @@ import com.example.stuid.models.ProjectAdapter;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.Callback;
+import okhttp3.Response;
 
 public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskButtonClickListener {
     private List<Employee> allEmployees = new ArrayList<>();
@@ -57,6 +63,8 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     private ProjectAdapter adapter;
     private ImageButton btnAdd;
     private int currentUserId;
+    private boolean isArchiveMode = false;
+    private TextView tvTitle;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -67,9 +75,25 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
         recyclerView = view.findViewById(R.id.rvProjects);
+        tvTitle = view.findViewById(R.id.tvTitle);
 
         btnAdd = view.findViewById(R.id.btnAdd);
         btnAdd.setOnClickListener(v -> {showAddProjectDialog();});
+
+        ImageButton btnArchive = view.findViewById(R.id.btnArchive);
+        btnArchive.setOnClickListener(v -> {
+            isArchiveMode = !isArchiveMode;
+
+            tvTitle.setText(isArchiveMode
+                    ? "Архив"
+                    : "Проекты");
+
+            btnArchive.setImageResource(isArchiveMode
+                    ? R.drawable.ic_close
+                    : R.drawable.ic_archive);
+
+            loadInitialData();
+        });
 
         // Настройка SwipeRefresh
         swipeRefresh.setOnRefreshListener(this::loadInitialData);
@@ -134,8 +158,16 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.getUserProjects(token, currentUserId, new ProjectsCallback() {
             @Override
             public void onSuccess(List<Project> projects) {
+                List<Project> filteredList = new ArrayList<>();
+
+                for (Project p : projects) {
+                    if (p.isArchive() == isArchiveMode) {
+                        filteredList.add(p);
+                    }
+                }
+
                 requireActivity().runOnUiThread(() -> {
-                    adapter.updateProjects(projects);
+                    adapter.updateProjects(filteredList);
                     hideLoaders(); // Скрываем все индикаторы загрузки
                 });
             }
@@ -779,5 +811,61 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         Navigation.findNavController(requireView())
                 .navigate(R.id.action_projectsFragment_to_tasksDetailFragment, args);
+    }
+
+    @Override
+    public void onArchiveClick(int position) {
+        Project project = adapter.getProjects().get(position);
+
+        showArchiveConfirmationDialog(project);
+    }
+
+    private void showArchiveConfirmationDialog(Project project) {
+        String direction = isArchiveMode
+                ? "из архива"
+                : "в архив";
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Архивировать проект?")
+                .setMessage("Вы уверены, что хотите переместить этот проект" + direction + "?")
+                .setPositiveButton("Да", (dialog, which) -> archiveProject(project))
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void archiveProject(Project project) {
+        String token = prefs.getString("jwt_token", null);
+        if (token == null) {
+            redirectToLogin();
+            return;
+        }
+
+        if (!swipeRefresh.isRefreshing()) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
+
+        apiClient.archiveProject(token, project.getId(), new Callback() {
+            @Override
+            public void onFailure(@NonNull okhttp3.Call call, @NonNull IOException e) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "Ошибка сети", Toast.LENGTH_SHORT).show();
+                    hideLoaders();
+                });
+            }
+            @Override
+            public void onResponse(@NonNull  okhttp3.Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    requireActivity().runOnUiThread(() -> {
+                        adapter.removeProject(project); // Удаляем проект из списка
+                        Toast.makeText(requireContext(), "Проект перемещён в архив", Toast.LENGTH_SHORT).show();
+                        hideLoaders();
+                    });
+                } else {
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Ошибка архивации проекта", Toast.LENGTH_SHORT).show();
+                        hideLoaders();
+                    });
+                }
+            }
+        });
     }
 }

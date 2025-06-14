@@ -15,14 +15,34 @@
         android:textSize="14sp"
         android:textColor="@color/gray"/>
 
-    <!-- Название проекта -->
-    <TextView
-        android:id="@+id/tvProjectName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginTop="4dp"/>
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <!-- Название проекта -->
+        <TextView
+            android:id="@+id/tvProjectName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            />
+
+        <TextView
+            android:id="@+id/tvArchive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:text="В ахрив"
+            android:textColor="@color/blue"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:background="@drawable/underline_text_background"/>
+
+    </RelativeLayout>
 
     <!-- Создатель проекта -->
     <TextView

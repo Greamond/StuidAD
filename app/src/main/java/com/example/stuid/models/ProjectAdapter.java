@@ -1,5 +1,8 @@
 package com.example.stuid.models;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
+import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,7 +21,8 @@ import java.util.List;
 public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHolder> {
     public interface OnTaskButtonClickListener {
         void onTaskButtonClick(int position);
-        void onProjectClick(int position); // Добавляем новый метод
+        void onProjectClick(int position);
+        void onArchiveClick(int position);
     }
     private List<Project> projects;
     private List<Employee> employees = new ArrayList<>();;
@@ -26,7 +30,7 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
     private int currentUserId;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView tvNumber, tvName, tvCreator;
+        public TextView tvNumber, tvName, tvCreator, tvArchive;
         public Button btnTasks;
 
         public ViewHolder(View itemView) {
@@ -35,6 +39,7 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
             tvName = itemView.findViewById(R.id.tvProjectName);
             tvCreator = itemView.findViewById(R.id.tvProjectCreator);
             btnTasks = itemView.findViewById(R.id.btnProjectTasks);
+            tvArchive = itemView.findViewById(R.id.tvArchive);
         }
     }
 
@@ -70,6 +75,15 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
 
         holder.tvCreator.setText("Создатель: " +
                 (project.getCreator() == currentUserId ? "Вы" : creatorName));
+
+        holder.tvArchive.setText(project.isArchive() ? "Из архива" : "В архив");
+        if (project.getCreator() != currentUserId) holder.tvArchive.setVisibility(View.GONE);
+
+        holder.tvArchive.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onArchiveClick(position);
+            }
+        });
 
         // Обработка клика на кнопке задач
         holder.btnTasks.setOnClickListener(v -> {
@@ -119,5 +133,10 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
         projects.add(0, project);
         // Уведомляем адаптер о вставке в позицию 0
         notifyItemInserted(0);
+    }
+
+    public void removeProject(Project project) {
+        projects.remove(project);
+        notifyDataSetChanged();
     }
 }

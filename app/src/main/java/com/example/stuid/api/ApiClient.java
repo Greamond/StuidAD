@@ -300,6 +300,29 @@ public class ApiClient {
         }
     }
 
+    public void archiveProject(String token, int projectId, Callback callback) {
+        OkHttpClient client = new OkHttpClient();
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("IsArchive", true);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        RequestBody body = RequestBody.create(
+                jsonBody.toString(),
+                MediaType.get("application/json; charset=utf-8")
+        );
+
+        Request request = new Request.Builder()
+                .put(body)
+                .url(BASE_URL + "Projects/" + projectId + "/archive")
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(callback);
+    }
+
     public void updateProfile(int employeeId, String lastName, String firstName, String middleName,
                               String description, String token, final ProfileUpdateCallback callback) {
         try {
@@ -686,7 +709,8 @@ public class ApiClient {
                                 json.getString("Name"),
                                 json.getString("Description"),
                                 json.getBoolean("IsPublic"),
-                                json.getInt("Creator")
+                                json.getInt("Creator"),
+                                json.getBoolean("IsArchive")
                         ));
                     }
                     callback.onSuccess(projects);

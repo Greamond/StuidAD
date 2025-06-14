@@ -36,6 +36,18 @@
                         android:layout_centerVertical="true"/>
 
                     <ImageButton
+                        android:id="@+id/btnArchive"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginRight="40dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_archive"
+                        android:contentDescription="Архив"
+                        app:tint="@color/blue" />
+
+                    <ImageButton
                         android:id="@+id/btnAdd"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
