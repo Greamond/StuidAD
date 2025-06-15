@@ -92,6 +92,10 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     ? R.drawable.ic_close
                     : R.drawable.ic_archive);
 
+            btnAdd.setVisibility(isArchiveMode
+                    ? View.GONE
+                    : View.VISIBLE);
+
             loadInitialData();
         });
 
@@ -128,20 +132,24 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
-                requireActivity().runOnUiThread(() -> {
-                    adapter.setEmployees(employees);
-                    loadUserProjects(); // Теперь загружаем проекты
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        adapter.setEmployees(employees);
+                        loadUserProjects(); // Теперь загружаем проекты
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(),
-                            "Ошибка загрузки сотрудников: " + error,
-                            Toast.LENGTH_SHORT).show();
-                    loadUserProjects(); // Все равно пытаемся загрузить проекты
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(),
+                                "Ошибка загрузки сотрудников: " + error,
+                                Toast.LENGTH_SHORT).show();
+                        loadUserProjects(); // Все равно пытаемся загрузить проекты
+                    });
+                }
             }
         });
     }
@@ -166,18 +174,22 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     }
                 }
 
-                requireActivity().runOnUiThread(() -> {
-                    adapter.updateProjects(filteredList);
-                    hideLoaders(); // Скрываем все индикаторы загрузки
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        adapter.updateProjects(filteredList);
+                        hideLoaders(); // Скрываем все индикаторы загрузки
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    hideLoaders();
-                    showError(error);
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        hideLoaders();
+                        showError(error);
+                    });
+                }
             }
         });
     }
@@ -296,77 +308,81 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
-                requireActivity().runOnUiThread(() -> {
-                    allEmployees = new ArrayList<>(employees); // Сохраняем копию списка
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        allEmployees = new ArrayList<>(employees); // Сохраняем копию списка
 
-                    ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
-                            requireContext(),
-                            android.R.layout.simple_dropdown_item_1line,
-                            allEmployees // Используем сохраненный список
-                    ) {
-                        @Override
-                        public View getView(int position, View convertView, ViewGroup parent) {
-                            View view = super.getView(position, convertView, parent);
-                            Employee employee = getItem(position);
-                            if (employee != null) {
-                                ((TextView) view).setText(employee.getFullName() + " (" + employee.getEmail() + ")");
+                        ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
+                                requireContext(),
+                                android.R.layout.simple_dropdown_item_1line,
+                                allEmployees // Используем сохраненный список
+                        ) {
+                            @Override
+                            public View getView(int position, View convertView, ViewGroup parent) {
+                                View view = super.getView(position, convertView, parent);
+                                Employee employee = getItem(position);
+                                if (employee != null) {
+                                    ((TextView) view).setText(employee.getFullName() + " (" + employee.getEmail() + ")");
+                                }
+                                return view;
                             }
-                            return view;
-                        }
 
-                        @Override
-                        public Filter getFilter() {
-                            return new Filter() {
-                                @Override
-                                protected FilterResults performFiltering(CharSequence constraint) {
-                                    FilterResults results = new FilterResults();
-                                    List<Employee> filteredList = new ArrayList<>();
+                            @Override
+                            public Filter getFilter() {
+                                return new Filter() {
+                                    @Override
+                                    protected FilterResults performFiltering(CharSequence constraint) {
+                                        FilterResults results = new FilterResults();
+                                        List<Employee> filteredList = new ArrayList<>();
 
-                                    if (constraint == null || constraint.length() == 0) {
-                                        filteredList.addAll(allEmployees);
-                                    } else {
-                                        String filterPattern = constraint.toString().toLowerCase().trim();
-                                        for (Employee employee : allEmployees) {
-                                            if (employee.getFullName().toLowerCase().contains(filterPattern) ||
-                                                    employee.getEmail().toLowerCase().contains(filterPattern)) {
-                                                filteredList.add(employee);
+                                        if (constraint == null || constraint.length() == 0) {
+                                            filteredList.addAll(allEmployees);
+                                        } else {
+                                            String filterPattern = constraint.toString().toLowerCase().trim();
+                                            for (Employee employee : allEmployees) {
+                                                if (employee.getFullName().toLowerCase().contains(filterPattern) ||
+                                                        employee.getEmail().toLowerCase().contains(filterPattern)) {
+                                                    filteredList.add(employee);
+                                                }
                                             }
                                         }
+
+                                        results.values = filteredList;
+                                        results.count = filteredList.size();
+                                        return results;
                                     }
 
-                                    results.values = filteredList;
-                                    results.count = filteredList.size();
-                                    return results;
-                                }
-
-                                @Override
-                                protected void publishResults(CharSequence constraint, FilterResults results) {
-                                    clear();
-                                    if (results.values != null) {
-                                        addAll((List<Employee>) results.values);
+                                    @Override
+                                    protected void publishResults(CharSequence constraint, FilterResults results) {
+                                        clear();
+                                        if (results.values != null) {
+                                            addAll((List<Employee>) results.values);
+                                        }
+                                        notifyDataSetChanged();
                                     }
-                                    notifyDataSetChanged();
-                                }
-                            };
-                        }
-                    };
+                                };
+                            }
+                        };
 
-                    actvEmployeeSearch.setAdapter(adapter);
-                    actvEmployeeSearch.setOnItemClickListener((parent, view, position, id) -> {
-                        Employee selectedEmployee = adapter.getItem(position);
-                        if (selectedEmployee != null && !isEmployeeAlreadyAdded(selectedEmployee.getEmployeeId(), llSelectedEmployees)) {
-                            addSelectedEmployee(selectedEmployee, llSelectedEmployees);
-                            actvEmployeeSearch.setText("");
-                        }
+                        actvEmployeeSearch.setAdapter(adapter);
+                        actvEmployeeSearch.setOnItemClickListener((parent, view, position, id) -> {
+                            Employee selectedEmployee = adapter.getItem(position);
+                            if (selectedEmployee != null && !isEmployeeAlreadyAdded(selectedEmployee.getEmployeeId(), llSelectedEmployees)) {
+                                addSelectedEmployee(selectedEmployee, llSelectedEmployees);
+                                actvEmployeeSearch.setText("");
+                            }
+                        });
                     });
-                });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "Ошибка загрузки сотрудников: " + error, Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Ошибка загрузки сотрудников: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
     }
@@ -428,28 +444,32 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 if (!isPublic && !participantIds.isEmpty()) {
                     addParticipantsToProject(token, createdProject.getId(), participantIds);
                 } else {
-                    requireActivity().runOnUiThread(() -> {
-                        progressBar.setVisibility(View.GONE);
-                        String message = isPublic ?
-                                "Публичный проект '" + createdProject.getName() + "' создан" :
-                                "Проект '" + createdProject.getName() + "' создан";
-                        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                        adapter.addProject(createdProject);
-                    });
+                    if (getActivity() != null && isAdded()) {
+                        getActivity().runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            String message = isPublic ?
+                                    "Публичный проект '" + createdProject.getName() + "' создан" :
+                                    "Проект '" + createdProject.getName() + "' создан";
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                            adapter.addProject(createdProject);
+                        });
+                    }
                 }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    showError("Ошибка создания проекта: " + error);
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        showError("Ошибка создания проекта: " + error);
 
-                    // Для ошибок авторизации перенаправляем на логин
-                    if (error.contains("401") || error.contains("Unauthorized")) {
-                        redirectToLogin();
-                    }
-                });
+                        // Для ошибок авторизации перенаправляем на логин
+                        if (error.contains("401") || error.contains("Unauthorized")) {
+                            redirectToLogin();
+                        }
+                    });
+                }
             }
         });
     }
@@ -458,24 +478,28 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.addParticipants(token, projectId, participantIds, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),
-                            "Проект создан и участники добавлены",
-                            Toast.LENGTH_SHORT).show();
-                    loadUserProjects(); // Обновляем список проектов
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(),
+                                "Проект создан и участники добавлены",
+                                Toast.LENGTH_SHORT).show();
+                        loadUserProjects(); // Обновляем список проектов
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),
-                            "Проект создан, но не удалось добавить участников: " + error,
-                            Toast.LENGTH_LONG).show();
-                    loadUserProjects(); // Все равно обновляем список проектов
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(),
+                                "Проект создан, но не удалось добавить участников: " + error,
+                                Toast.LENGTH_LONG).show();
+                        loadUserProjects(); // Все равно обновляем список проектов
+                    });
+                }
             }
         });
     }
@@ -649,23 +673,27 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
-                requireActivity().runOnUiThread(() -> {
-                    container.removeAllViews();
-                    for (Employee participant : participants) {
-                        addSelectedEmployee(participant, container);
-                    }
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        container.removeAllViews();
+                        for (Employee participant : participants) {
+                            addSelectedEmployee(participant, container);
+                        }
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    container.removeAllViews();
-                    TextView errorView = new TextView(requireContext());
-                    errorView.setText("Ошибка загрузки участников");
-                    errorView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark));
-                    container.addView(errorView);
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        container.removeAllViews();
+                        TextView errorView = new TextView(requireContext());
+                        errorView.setText("Ошибка загрузки участников");
+                        errorView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark));
+                        container.addView(errorView);
+                    });
+                }
             }
         });
     }
@@ -691,10 +719,12 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    showError("Ошибка обновления проекта: " + error);
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        showError("Ошибка обновления проекта: " + error);
+                    });
+                }
             }
         });
     }
@@ -703,23 +733,27 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.updateProjectParticipants(token, projectId, newParticipantIds, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),
-                            "Проект успешно обновлен", Toast.LENGTH_SHORT).show();
-                    loadUserProjects(); // Обновляем список проектов
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(),
+                                "Проект успешно обновлен", Toast.LENGTH_SHORT).show();
+                        loadUserProjects(); // Обновляем список проектов
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),
-                            "Проект обновлен, но не удалось обновить участников: " + error,
-                            Toast.LENGTH_LONG).show();
-                    loadUserProjects(); // Все равно обновляем список проектов
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(),
+                                "Проект обновлен, но не удалось обновить участников: " + error,
+                                Toast.LENGTH_LONG).show();
+                        loadUserProjects(); // Все равно обновляем список проектов
+                    });
+                }
             }
         });
     }
@@ -747,20 +781,24 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.deleteProject(token, projectId, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),
-                            "Проект успешно удален", Toast.LENGTH_SHORT).show();
-                    loadUserProjects(); // Обновляем список проектов
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(),
+                                "Проект успешно удален", Toast.LENGTH_SHORT).show();
+                        loadUserProjects(); // Обновляем список проектов
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    showError("Ошибка удаления проекта: " + error);
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        showError("Ошибка удаления проекта: " + error);
+                    });
+                }
             }
         });
     }
@@ -775,24 +813,28 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
-                requireActivity().runOnUiThread(() -> {
-                    container.removeAllViews();
-                    for (Employee participant : participants) {
-                        TextView participantView = new TextView(requireContext());
-                        participantView.setText(participant.getFullName());
-                        participantView.setPadding(0, 8, 0, 8);
-                        container.addView(participantView);
-                    }
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        container.removeAllViews();
+                        for (Employee participant : participants) {
+                            TextView participantView = new TextView(requireContext());
+                            participantView.setText(participant.getFullName());
+                            participantView.setPadding(0, 8, 0, 8);
+                            container.addView(participantView);
+                        }
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(),
-                            "Ошибка загрузки участников: " + error,
-                            Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(),
+                                "Ошибка загрузки участников: " + error,
+                                Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
     }
@@ -846,24 +888,30 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         apiClient.archiveProject(token, project.getId(), new Callback() {
             @Override
             public void onFailure(@NonNull okhttp3.Call call, @NonNull IOException e) {
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "Ошибка сети", Toast.LENGTH_SHORT).show();
-                    hideLoaders();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Ошибка сети", Toast.LENGTH_SHORT).show();
+                        hideLoaders();
+                    });
+                }
             }
             @Override
             public void onResponse(@NonNull  okhttp3.Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    requireActivity().runOnUiThread(() -> {
-                        adapter.removeProject(project); // Удаляем проект из списка
-                        Toast.makeText(requireContext(), "Проект перемещён в архив", Toast.LENGTH_SHORT).show();
-                        hideLoaders();
-                    });
+                    if (getActivity() != null && isAdded()) {
+                        getActivity().runOnUiThread(() -> {
+                            adapter.removeProject(project); // Удаляем проект из списка
+                            Toast.makeText(requireContext(), "Проект перемещён в архив", Toast.LENGTH_SHORT).show();
+                            hideLoaders();
+                        });
+                    }
                 } else {
-                    requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), "Ошибка архивации проекта", Toast.LENGTH_SHORT).show();
-                        hideLoaders();
-                    });
+                    if (getActivity() != null && isAdded()) {
+                        getActivity().runOnUiThread(() -> {
+                            Toast.makeText(requireContext(), "Ошибка архивации проекта", Toast.LENGTH_SHORT).show();
+                            hideLoaders();
+                        });
+                    }
                 }
             }
         });

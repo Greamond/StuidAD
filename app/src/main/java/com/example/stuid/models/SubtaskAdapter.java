@@ -60,7 +60,7 @@ public class SubtaskAdapter extends RecyclerView.Adapter<SubtaskAdapter.ViewHold
             tvName.setText(subtask.getName());
             tvSubtasks.setVisibility(View.GONE);
 
-
+            tvResponsible.setText("Ответственный: загрузка..." );
             // Получаем имя ответственного
             getResponsibleName(subtask.getResponsibleId(), new CreatorNameCallback() {
                 @Override

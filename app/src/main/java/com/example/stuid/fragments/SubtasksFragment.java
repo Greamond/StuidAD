@@ -166,6 +166,14 @@ public class SubtasksFragment extends Fragment {
         swipeRefresh.setOnRefreshListener(this::refreshData);
         loadInitialData();
 
+        ImageButton btnAddColumn = view.findViewById(R.id.btnAddColumn);
+
+        if (currentUserId == projectCreatorId || isTaskAssignee()) {
+            btnAddColumn.setVisibility(View.VISIBLE);
+        } else {
+            btnAddColumn.setVisibility(View.GONE);
+        }
+
         return view;
     }
 
@@ -235,6 +243,15 @@ public class SubtasksFragment extends Fragment {
                 });
             }
         });
+    }
+
+    private boolean isTaskAssignee(){
+        for (Employee employee : taskAssignees) {
+            if (employee.getEmployeeId() == currentUserId) {
+                return true;
+            }
+        }
+        return  false;
     }
 
     private void loadColumns() {
@@ -325,6 +342,11 @@ public class SubtasksFragment extends Fragment {
     }
 
     public void showAddColumnDialog(SubtaskColumn columnToEdit) {
+        if (currentUserId != projectCreatorId && !isTaskAssignee()) {
+            Toast.makeText(requireContext(), "Только создатель проекта или ответственный может редактировать колонки", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle(columnToEdit == null ? "Создать колонку" : "Редактировать колонку");
 
@@ -533,6 +555,11 @@ public class SubtasksFragment extends Fragment {
     }
 
     private void showAddSubtaskDialog(int columnId, List<Employee> availableAssignees) {
+        if (currentUserId != projectCreatorId && !isTaskAssignee()) {
+            Toast.makeText(requireContext(), "Только создатель проекта или ответственный может добавлять подзадачи", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Новая подзадача");
 

@@ -120,6 +120,13 @@ public class TasksFragment extends Fragment {
         }
         headerTitle.setText("Задачи проекта: " + displayProjectName);
 
+        ImageButton btnAddColumn = view.findViewById(R.id.btnAddColumn);
+        if (currentUserId == projectCreatorId) {
+            btnAddColumn.setVisibility(View.VISIBLE);
+        } else {
+            btnAddColumn.setVisibility(View.GONE);
+        }
+
         apiClient = new ApiClient();
 
         // Настройка RecyclerView для колонок
@@ -292,9 +299,20 @@ public class TasksFragment extends Fragment {
         });
     }
 
-    private void onAddTaskClicked(int columnId) { showAddTaskDialog(columnId, isPublicProject); }
+    private void onAddTaskClicked(int columnId) {
+        if (currentUserId != projectCreatorId) {
+            Toast.makeText(requireContext(), "Только создатель проекта может создавать задачи", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        showAddTaskDialog(columnId, isPublicProject);
+    }
 
     public void showEditColumnDialog(TaskColumn columnToEdit) {
+        if (currentUserId != projectCreatorId) {
+            Toast.makeText(requireContext(), "Только создатель проекта может редактировать колонки", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle(columnToEdit == null ? "Создать колонку" : "Редактировать колонку");
 
@@ -543,7 +561,7 @@ public class TasksFragment extends Fragment {
             }
 
             // Проверка ответственных (только для приватных проектов)
-            if (!isPublicProject && selectedAssignees.isEmpty()) {
+            if (selectedAssignees.isEmpty()) {
                 tvParticipantError.setVisibility(View.VISIBLE);
                 isValid = false;
             }
