@@ -32,6 +32,7 @@ import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.ProfilePhotoCallback;
 import com.example.stuid.api.ProfilePhotoDownloadCallback;
 import com.example.stuid.api.ProfileUpdateCallback;
+import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.classes.FileUtil;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.textfield.TextInputLayout;
@@ -43,6 +44,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 
+import okhttp3.Call;
+
 public class ProfileFragment extends Fragment {
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final long MAX_PHOTO_SIZE_BYTES = 1024 * 1024;
@@ -52,6 +55,19 @@ public class ProfileFragment extends Fragment {
     private ApiClient apiClient;
     private ProgressDialog progressDialog;
     private Uri selectedImageUri;
+    private final SafeCallManager callManager = new SafeCallManager();
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        callManager.cancelAll();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        callManager.clear();
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflator, ViewGroup container,
@@ -137,7 +153,7 @@ public class ProfileFragment extends Fragment {
         }
 
         // Если локального нет, загружаем с сервера
-        apiClient.getProfilePhoto(employeeId, token, new ProfilePhotoDownloadCallback() {
+        Call call = apiClient.getProfilePhoto(employeeId, token, new ProfilePhotoDownloadCallback() {
             @Override
             public void onSuccess(String base64Image) {
                 requireActivity().runOnUiThread(() -> {
@@ -175,6 +191,7 @@ public class ProfileFragment extends Fragment {
                 });
             }
         });
+        callManager.add(call);
     }
 
     private void showEditProfileDialog() {
@@ -305,7 +322,7 @@ public class ProfileFragment extends Fragment {
         int employeeId = prefs.getInt("employee_id", 0);
         String token = prefs.getString("jwt_token", "");
 
-        apiClient.updateProfile(employeeId, lastName, firstName, middleName,
+        Call call = apiClient.updateProfile(employeeId, lastName, firstName, middleName,
                 description, token, new ProfileUpdateCallback() {
                     @Override
                     public void onSuccess() {
@@ -339,6 +356,7 @@ public class ProfileFragment extends Fragment {
                         });
                     }
                 });
+        callManager.add(call);
     }
 
     private boolean validateInput(String lastName, String firstName) {
@@ -394,7 +412,7 @@ public class ProfileFragment extends Fragment {
                 int employeeId = prefs.getInt("employee_id", 0);
                 String token = prefs.getString("jwt_token", "");
 
-                apiClient.uploadProfilePhoto(employeeId, base64Image, token, new ProfilePhotoCallback() {
+                Call call = apiClient.uploadProfilePhoto(employeeId, base64Image, token, new ProfilePhotoCallback() {
                     @Override
                     public void onSuccess() {
                         requireActivity().runOnUiThread(() -> {
@@ -422,6 +440,7 @@ public class ProfileFragment extends Fragment {
                         });
                     }
                 });
+                callManager.add(call);
 
             } catch (IOException e) {
                 requireActivity().runOnUiThread(() -> {

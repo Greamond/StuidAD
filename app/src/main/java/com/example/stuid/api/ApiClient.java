@@ -47,7 +47,7 @@ public class ApiClient {
         this.client = new OkHttpClient();
     }
 
-    public void loginUser(String email, String password, final AuthCallback callback) {
+    public Call loginUser(String email, String password, final AuthCallback callback) {
         String hashedPassword = hashPassword(password);
 
         // Создаем JSON тело запроса
@@ -57,7 +57,7 @@ public class ApiClient {
             jsonBody.put("Password", hashedPassword);
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
-            return;
+            return null;
         }
 
         RequestBody requestBody = RequestBody.create(
@@ -75,7 +75,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("NetworkError", "Error: " + e.getMessage());
@@ -112,9 +113,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void registerUser(String firstName, String lastName, String middleName,
+    public Call registerUser(String firstName, String lastName, String middleName,
                              String email, String password,
                              final AuthCallback callback) {
         String hashedPassword = hashPassword(password);
@@ -128,7 +130,7 @@ public class ApiClient {
             jsonBody.put("Password", hashedPassword);
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
-            return;
+            return null;
         }
 
         RequestBody requestBody = RequestBody.create(
@@ -146,7 +148,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("NetworkError", "Error: " + e.getMessage());
@@ -183,12 +186,13 @@ public class ApiClient {
                 }
             }
         });
+        return  call;
     }
 
-    public void getEmployees(String authToken, final EmployeesCallback callback) {
+    public Call getEmployees(String authToken, final EmployeesCallback callback) {
         if (authToken == null || authToken.isEmpty()) {
             callback.onFailure("Authorization token is missing");
-            return;
+            return null;
         }
 
         String EMPLOYEES_URL = BASE_URL + "Users/employees";
@@ -198,7 +202,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + authToken)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -239,9 +244,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void createProject(String token, Project project, final ProjectCreateCallback callback) {
+    public Call createProject(String token, Project project, final ProjectCreateCallback callback) {
         try {
             JSONObject jsonBody = new JSONObject();
             jsonBody.put("Name", project.getName());
@@ -261,7 +267,8 @@ public class ApiClient {
                     .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -295,12 +302,14 @@ public class ApiClient {
                     }
                 }
             });
+            return call;
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
+            return null;
         }
     }
 
-    public void archiveProject(String token, int projectId, Callback callback) {
+    public Call archiveProject(String token, int projectId, Callback callback) {
         OkHttpClient client = new OkHttpClient();
         JSONObject jsonBody = new JSONObject();
         try {
@@ -320,10 +329,12 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(callback);
+        Call call = client.newCall(request);
+        call.enqueue(callback);
+        return call;
     }
 
-    public void updateProfile(int employeeId, String lastName, String firstName, String middleName,
+    public Call updateProfile(int employeeId, String lastName, String firstName, String middleName,
                               String description, String token, final ProfileUpdateCallback callback) {
         try {
             JSONObject jsonBody = new JSONObject();
@@ -341,7 +352,8 @@ public class ApiClient {
                     .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -374,12 +386,14 @@ public class ApiClient {
                     }
                 }
             });
+            return call;
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
+            return null;
         }
     }
 
-    public void uploadProfilePhoto(int employeeId, String base64Image, String token,
+    public Call uploadProfilePhoto(int employeeId, String base64Image, String token,
                                    final ProfilePhotoCallback callback) {
         try {
             JSONObject jsonBody = new JSONObject();
@@ -400,7 +414,8 @@ public class ApiClient {
                     .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -416,12 +431,14 @@ public class ApiClient {
                     callback.onSuccess();
                 }
             });
+            return call;
         } catch (JSONException e) {
             callback.onFailure("Error creating request");
+            return null;
         }
     }
 
-    public void getProfilePhoto(int employeeId, String token, final ProfilePhotoDownloadCallback callback) {
+    public Call getProfilePhoto(int employeeId, String token, final ProfilePhotoDownloadCallback callback) {
         String GET_PHOTO_URL = BASE_URL + "Users/" + employeeId + "/photo";
 
         Request request = new Request.Builder()
@@ -429,7 +446,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -452,9 +470,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void addParticipants(String token, int projectId, List<Integer> participantIds, ParticipantsCallback callback) {
+    public Call addParticipants(String token, int projectId, List<Integer> participantIds, ParticipantsCallback callback) {
         try {
             JSONObject jsonBody = new JSONObject();
             JSONArray participantsArray = new JSONArray();
@@ -478,7 +497,8 @@ public class ApiClient {
                     .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -495,19 +515,22 @@ public class ApiClient {
                     callback.onSuccess();
                 }
             });
+            return call;
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
+            return null;
         }
     }
 
-    public void getProjectParticipants(String token, int projectId, EmployeesCallback callback) {
+    public Call getProjectParticipants(String token, int projectId, EmployeesCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Participants/getParticipants/" + projectId)
                 .get()
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -544,9 +567,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void updateProject(String token, Project project, ProjectCreateCallback callback) {
+    public Call updateProject(String token, Project project, ProjectCreateCallback callback) {
         try {
             JSONObject jsonBody = new JSONObject();
             jsonBody.put("Id", project.getId());
@@ -566,7 +590,8 @@ public class ApiClient {
                     .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -599,12 +624,14 @@ public class ApiClient {
                     }
                 }
             });
+            return call;
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
+            return null;
         }
     }
 
-    public void updateProjectParticipants(String token, int projectId, List<Integer> participantIds, ParticipantsCallback callback) {
+    public Call updateProjectParticipants(String token, int projectId, List<Integer> participantIds, ParticipantsCallback callback) {
         try {
             JSONObject jsonBody = new JSONObject();
             JSONArray participantsArray = new JSONArray();
@@ -628,7 +655,8 @@ public class ApiClient {
                     .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -645,19 +673,22 @@ public class ApiClient {
                     callback.onSuccess();
                 }
             });
+            return call;
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
+            return null;
         }
     }
 
-    public void deleteProject(String token, int projectId, ParticipantsCallback callback) {
+    public Call deleteProject(String token, int projectId, ParticipantsCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Projects/" + projectId)
                 .delete()
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -674,9 +705,10 @@ public class ApiClient {
                 callback.onSuccess();
             }
         });
+        return call;
     }
 
-    public void getUserProjects(String token, int userId, final ProjectsCallback callback) {
+    public Call getUserProjects(String token, int userId, final ProjectsCallback callback) {
         String url = BASE_URL + "Projects/forUser/" + userId;
 
         Request request = new Request.Builder()
@@ -684,7 +716,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -719,9 +752,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void getProjectTasks(String token, int projectId, final TasksCallback callback) {
+    public Call getProjectTasks(String token, int projectId, final TasksCallback callback) {
         String url = BASE_URL + "Tasks/project/" + projectId;
         Log.d("API_REQUEST", "Fetching tasks from: " + url);
 
@@ -730,7 +764,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("API_ERROR", "Network error", e);
@@ -773,9 +808,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void getTaskSubtasks(String token, int taskId, final SubtasksCallback callback) {
+    public Call getTaskSubtasks(String token, int taskId, final SubtasksCallback callback) {
         String url = BASE_URL + "Subtasks/task/" + taskId;
         Log.d("API_REQUEST", "Fetching tasks from: " + url);
 
@@ -784,7 +820,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("API_ERROR", "Network error", e);
@@ -829,9 +866,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void createTask(String token, JSONObject taskData, TaskCreateCallback callback) {
+    public Call createTask(String token, JSONObject taskData, TaskCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 taskData.toString(),
                 MediaType.parse("application/json")
@@ -844,7 +882,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -874,9 +913,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void createSubtask(String token, JSONObject subtaskData, SubtaskCreateCallback callback) {
+    public Call createSubtask(String token, JSONObject subtaskData, SubtaskCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 subtaskData.toString(),
                 MediaType.parse("application/json")
@@ -889,7 +929,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -920,15 +961,17 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void getTaskAssignees(String token, int taskId, EmployeesCallback callback) {
+    public Call getTaskAssignees(String token, int taskId, EmployeesCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "TaskResponsibles/task/" + taskId) // Исправленный URL
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -962,9 +1005,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void updateTask(String token, int taskId, JSONObject taskData, TaskCreateCallback callback) {
+    public Call updateTask(String token, int taskId, JSONObject taskData, TaskCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 taskData.toString(),
                 MediaType.parse("application/json")
@@ -977,7 +1021,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1009,9 +1054,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void updateSubtask(String token, int subtaskId, JSONObject subtaskData, SubtaskCreateCallback callback) {
+    public Call updateSubtask(String token, int subtaskId, JSONObject subtaskData, SubtaskCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 subtaskData.toString(),
                 MediaType.parse("application/json")
@@ -1024,7 +1070,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1057,16 +1104,18 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void deleteTask(String token, int taskId, TaskDeleteCallback callback) {
+    public Call deleteTask(String token, int taskId, TaskDeleteCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Tasks/" + taskId)
                 .delete()
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1081,16 +1130,18 @@ public class ApiClient {
                 callback.onSuccess();
             }
         });
+        return call;
     }
 
-    public void deleteSubtask(String token, int subtaskId, TaskDeleteCallback callback) {
+    public Call deleteSubtask(String token, int subtaskId, TaskDeleteCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Subtasks/" + subtaskId)
                 .delete()
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1105,15 +1156,17 @@ public class ApiClient {
                 callback.onSuccess();
             }
         });
+        return call;
     }
 
-    public void getEmployeeInfo(String token, int employeeId, EmployeeCallback callback) {
+    public Call getEmployeeInfo(String token, int employeeId, EmployeeCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Users/" + employeeId)
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1145,9 +1198,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void updateTaskChapter(String token, int taskId, int chapterId, ProfileUpdateCallback callback) {
+    public Call updateTaskChapter(String token, int taskId, int chapterId, ProfileUpdateCallback callback) {
         try {
             // 1. Формируем JSON-тело
             JSONObject jsonBody = new JSONObject();
@@ -1164,7 +1218,8 @@ public class ApiClient {
                     .build();
 
             // 3. Отправляем асинхронно
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -1185,13 +1240,15 @@ public class ApiClient {
                     }
                 }
             });
+            return call;
 
         } catch (Exception e) {
             callback.onFailure("Request creation error: " + e.getMessage());
+            return null;
         }
     }
 
-    public void updateSubtaskChapter(String token, int subtaskId, int chapterId, ProfileUpdateCallback callback) {
+    public Call updateSubtaskChapter(String token, int subtaskId, int chapterId, ProfileUpdateCallback callback) {
         try {
             // 1. Формируем JSON-тело
             JSONObject jsonBody = new JSONObject();
@@ -1208,7 +1265,8 @@ public class ApiClient {
                     .build();
 
             // 3. Отправляем асинхронно
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure("Network error: " + e.getMessage());
@@ -1229,13 +1287,14 @@ public class ApiClient {
                     }
                 }
             });
-
+            return call;
         } catch (Exception e) {
             callback.onFailure("Request creation error: " + e.getMessage());
+            return null;
         }
     }
 
-    public void updateTaskOrder(String token, int projectId, int columnId, List<Task> orderedTasks, ParticipantsCallback callback) {
+    public Call updateTaskOrder(String token, int projectId, int columnId, List<Task> orderedTasks, ParticipantsCallback callback) {
         JSONObject json = new JSONObject();
         try {
             json.put("projectId", projectId);
@@ -1261,7 +1320,8 @@ public class ApiClient {
                     .addHeader("Authorization", "Bearer " + token)
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure(e.getMessage());
@@ -1276,13 +1336,14 @@ public class ApiClient {
                     }
                 }
             });
-
+            return call;
         } catch (JSONException e) {
             callback.onFailure("JSON error: " + e.getMessage());
-}
+            return null;
+        }
     }
 
-    public void updateSubtaskOrder(String token, int taskId, int columnId, List<Subtask> orderedTasks, ParticipantsCallback callback) {
+    public Call updateSubtaskOrder(String token, int taskId, int columnId, List<Subtask> orderedTasks, ParticipantsCallback callback) {
         JSONObject json = new JSONObject();
         try {
             json.put("taskId", taskId);
@@ -1308,7 +1369,8 @@ public class ApiClient {
                     .addHeader("Authorization", "Bearer " + token)
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     callback.onFailure(e.getMessage());
@@ -1323,13 +1385,14 @@ public class ApiClient {
                     }
                 }
             });
-
+            return call;
         } catch (JSONException e) {
             callback.onFailure("JSON error: " + e.getMessage());
+            return null;
         }
     }
 
-    public void getColumnsForProject(String token, int projectId, ColumnsCallback callback) {
+    public Call getColumnsForProject(String token, int projectId, ColumnsCallback callback) {
         String url = BASE_URL + "ChaptersTask/project/" + projectId;
 
         Request request = new Request.Builder()
@@ -1337,7 +1400,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1368,9 +1432,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void getSubtaskColumnsForTask(String token, int taskId, SubtaskColumnsCallback callback) {
+    public Call getSubtaskColumnsForTask(String token, int taskId, SubtaskColumnsCallback callback) {
         String url = BASE_URL + "ChaptersSubtask/task/" + taskId;
 
         Request request = new Request.Builder()
@@ -1378,7 +1443,8 @@ public class ApiClient {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1409,16 +1475,17 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void createColumn(String token, String name, int projectId, ColumnCreateCallback callback) {
+    public Call createColumn(String token, String name, int projectId, ColumnCreateCallback callback) {
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("Name", name);
             jsonBody.put("ProjectId", projectId);
         } catch (JSONException e) {
             callback.onFailure("JSON error: " + e.getMessage());
-            return;
+            return null;
         }
 
         RequestBody body = RequestBody.create(
@@ -1433,7 +1500,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1457,16 +1525,17 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void createSubtaskColumn(String token, String name, int taskId, SubtaskColumnCreateCallback callback) {
+    public Call createSubtaskColumn(String token, String name, int taskId, SubtaskColumnCreateCallback callback) {
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("Name", name);
             jsonBody.put("TaskId", taskId);
         } catch (JSONException e) {
             callback.onFailure("JSON error: " + e.getMessage());
-            return;
+            return null;
         }
 
         RequestBody body = RequestBody.create(
@@ -1481,7 +1550,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1505,16 +1575,18 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void deleteSubtaskColumn(String token, int columnId, TaskDeleteCallback callback) {
+    public Call deleteSubtaskColumn(String token, int columnId, TaskDeleteCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "ChaptersSubtask/" + columnId)
                 .addHeader("Authorization", "Bearer " + token)
                 .delete()
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1529,9 +1601,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void updateSubtaskColumn(String token, int columnId, JSONObject jsonBody, SubtaskColumnCreateCallback callback) {
+    public Call updateSubtaskColumn(String token, int columnId, JSONObject jsonBody, SubtaskColumnCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 jsonBody.toString(),
                 MediaType.parse("application/json")
@@ -1544,7 +1617,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1575,9 +1649,10 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void updateColumn(String token, int columnId, JSONObject jsonBody, ColumnCreateCallback callback) {
+    public Call updateColumn(String token, int columnId, JSONObject jsonBody, ColumnCreateCallback callback) {
         RequestBody body = RequestBody.create(
                 jsonBody.toString(),
                 MediaType.parse("application/json")
@@ -1590,7 +1665,8 @@ public class ApiClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1618,16 +1694,18 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void deleteColumn(String token, int columnId, TaskDeleteCallback callback) {
+    public Call deleteColumn(String token, int columnId, TaskDeleteCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "ChaptersTask/" + columnId)
                 .delete()
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1642,15 +1720,17 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void getTasksByAssignee(String token, int assigneeId, TasksCallback callback) {
+    public Call getTasksByAssignee(String token, int assigneeId, TasksCallback callback) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "Tasks/assignee/" + assigneeId)
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1687,16 +1767,17 @@ public class ApiClient {
                 }
             }
         });
+        return call;
     }
 
-    public void sendPasswordResetEmail(String email, int code, AuthPasswordResetCallback callback) {
+    public Call sendPasswordResetEmail(String email, int code, AuthPasswordResetCallback callback) {
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("Email", email);
             jsonBody.put("Code", code);
         } catch (JSONException e) {
             callback.onFailure("JSON error: " + e.getMessage());
-            return;
+            return null;
         }
 
         RequestBody body = RequestBody.create(
@@ -1709,7 +1790,8 @@ public class ApiClient {
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1724,9 +1806,10 @@ public class ApiClient {
                 callback.onSuccess("Код отправлен на email", null);
             }
         });
+        return call;
     }
 
-    public void resetPassword(String email, String newPassword, AuthPasswordResetCallback callback) {
+    public Call resetPassword(String email, String newPassword, AuthPasswordResetCallback callback) {
         String hashedPassword = hashPassword(newPassword);
 
         JSONObject jsonBody = new JSONObject();
@@ -1735,7 +1818,7 @@ public class ApiClient {
             jsonBody.put("newPassword", hashedPassword);
         } catch (JSONException e) {
             callback.onFailure("JSON error: " + e.getMessage());
-            return;
+            return null;
         }
 
         RequestBody body = RequestBody.create(
@@ -1748,7 +1831,8 @@ public class ApiClient {
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 callback.onFailure("Network error: " + e.getMessage());
@@ -1763,5 +1847,6 @@ public class ApiClient {
                 callback.onSuccess("Пароль успешно изменён", null);
             }
         });
+        return call;
     }
 }

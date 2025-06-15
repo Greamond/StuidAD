@@ -46,6 +46,7 @@ import com.example.stuid.api.EmployeeCallback;
 import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.ParticipantsCallback;
 import com.example.stuid.api.ProfileUpdateCallback;
+import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.api.SubtaskColumnCreateCallback;
 import com.example.stuid.api.SubtaskColumnsCallback;
 import com.example.stuid.api.SubtaskCreateCallback;
@@ -77,6 +78,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import okhttp3.Call;
+
 public class SubtasksFragment extends Fragment {
     private int projectId;
     private int projectCreatorId;
@@ -100,6 +103,19 @@ public class SubtasksFragment extends Fragment {
     private static Subtask draggedTask;
     private boolean isPublicProject;
     private TextView headerTitle;
+    private final SafeCallManager callManager = new SafeCallManager();
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        callManager.cancelAll();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        callManager.clear();
+    }
 
     public static void setDraggedSubtask (Subtask subtask) {
         draggedTask = subtask;
@@ -198,51 +214,61 @@ public class SubtasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
-        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
+        Call call = apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
-                requireActivity().runOnUiThread(() -> {
-                    projectParticipants.clear();
-                    projectParticipants.addAll(participants);
-                    if (onComplete != null) onComplete.run();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        projectParticipants.clear();
+                        projectParticipants.addAll(participants);
+                        if (onComplete != null) onComplete.run();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(),
-                            "Ошибка загрузки участников: " + error,
-                            Toast.LENGTH_SHORT).show();
-                    if (onComplete != null) onComplete.run();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(),
+                                "Ошибка загрузки участников: " + error,
+                                Toast.LENGTH_SHORT).show();
+                        if (onComplete != null) onComplete.run();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void loadTaskAssignees(int taskId, Runnable onComplete) {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
-        apiClient.getTaskAssignees(token, taskId, new EmployeesCallback() {
+        Call call = apiClient.getTaskAssignees(token, taskId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> assignees) {
-                requireActivity().runOnUiThread(() -> {
-                    taskAssignees.clear();
-                    taskAssignees.addAll(assignees);
-                    if (onComplete != null) onComplete.run();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        taskAssignees.clear();
+                        taskAssignees.addAll(assignees);
+                        if (onComplete != null) onComplete.run();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    taskAssignees.clear();
-                    Toast.makeText(requireContext(), "Ошибка загрузки ответственных: " + error, Toast.LENGTH_SHORT).show();
-                    if (onComplete != null) onComplete.run();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        taskAssignees.clear();
+                        Toast.makeText(requireContext(), "Ошибка загрузки ответственных: " + error, Toast.LENGTH_SHORT).show();
+                        if (onComplete != null) onComplete.run();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private boolean isTaskAssignee(){
@@ -258,68 +284,78 @@ public class SubtasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
-        apiClient.getSubtaskColumnsForTask(token, taskId, new SubtaskColumnsCallback() {
+        Call call = apiClient.getSubtaskColumnsForTask(token, taskId, new SubtaskColumnsCallback() {
             @Override
             public void onSuccess(List<SubtaskColumn> serverColumns) {
-                requireActivity().runOnUiThread(() -> {
-                    columns.clear();
-                    columns.addAll(serverColumns);
-                    columnsAdapter.notifyDataSetChanged();
-                    loadSubtasks();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        columns.clear();
+                        columns.addAll(serverColumns);
+                        columnsAdapter.notifyDataSetChanged();
+                        loadSubtasks();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Ошибка загрузки колонок: " + error, Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка загрузки колонок: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void loadSubtasks() {
         String token = prefs.getString("jwt_token", null);
         if (token == null || taskId == -1) return;
 
-        apiClient.getTaskSubtasks(token, taskId, new SubtasksCallback() {
+        Call call = apiClient.getTaskSubtasks(token, taskId, new SubtasksCallback() {
             @Override
             public void onSuccess(List<Subtask> loadedSubtasks) {
-                requireActivity().runOnUiThread(() -> {
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
 
-                    // Очищаем задачи во всех колонках
-                    for (SubtaskColumn column : columns) {
-                        column.getSubtasks().clear();
-                    }
+                        // Очищаем задачи во всех колонках
+                        for (SubtaskColumn column : columns) {
+                            column.getSubtasks().clear();
+                        }
 
-                    // Распределяем задачи по колонкам
-                    Map<Integer, List<Subtask>> subtasksByColumn = new HashMap<>();
-                    for (Subtask subtask : loadedSubtasks) {
-                        subtasksByColumn.computeIfAbsent(subtask.getChapterId(), k -> new ArrayList<>()).add(subtask);
-                    }
+                        // Распределяем задачи по колонкам
+                        Map<Integer, List<Subtask>> subtasksByColumn = new HashMap<>();
+                        for (Subtask subtask : loadedSubtasks) {
+                            subtasksByColumn.computeIfAbsent(subtask.getChapterId(), k -> new ArrayList<>()).add(subtask);
+                        }
 
-                    // Сортируем и привязываем
-                    for (SubtaskColumn column : columns) {
-                        List<Subtask> columnSubtasks = subtasksByColumn.getOrDefault(column.getId(), new ArrayList<>());
-                        Collections.sort(columnSubtasks, Comparator.comparingInt(Subtask::getPosition));
-                        column.setSubtasks(columnSubtasks);
-                        Log.d("SubtasksFragment", "Колонка '" + column.getName() + "' получила " + columnSubtasks.size() + " подзадач");
-                    }
+                        // Сортируем и привязываем
+                        for (SubtaskColumn column : columns) {
+                            List<Subtask> columnSubtasks = subtasksByColumn.getOrDefault(column.getId(), new ArrayList<>());
+                            Collections.sort(columnSubtasks, Comparator.comparingInt(Subtask::getPosition));
+                            column.setSubtasks(columnSubtasks);
+                            Log.d("SubtasksFragment", "Колонка '" + column.getName() + "' получила " + columnSubtasks.size() + " подзадач");
+                        }
 
-                    columnsAdapter.notifyDataSetChanged();
-                    progressBar.setVisibility(View.GONE);
-                });
+                        columnsAdapter.notifyDataSetChanged();
+                        progressBar.setVisibility(View.GONE);
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(),"Ошибка загрузки подзадач: " + error,Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка загрузки подзадач: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void onSubtaskClicked(Subtask subtask) {
@@ -453,25 +489,30 @@ public class SubtasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
-        apiClient.deleteSubtaskColumn(token, column.getId(), new TaskDeleteCallback() {
+        Call call = apiClient.deleteSubtaskColumn(token, column.getId(), new TaskDeleteCallback() {
             @Override
             public void onSuccess() {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    columns.remove(column);
-                    columnsAdapter.notifyDataSetChanged();
-                    Toast.makeText(requireContext(), "Колонка удалена", Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        columns.remove(column);
+                        columnsAdapter.notifyDataSetChanged();
+                        Toast.makeText(requireContext(), "Колонка удалена", Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Ошибка удаления: " + error, Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка удаления: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void updateSubtaskColumn(SubtaskColumn column, String newName) {
@@ -493,34 +534,39 @@ public class SubtasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
-        apiClient.updateSubtaskColumn(token, column.getId(), jsonBody, new SubtaskColumnCreateCallback() {
+        Call call = apiClient.updateSubtaskColumn(token, column.getId(), jsonBody, new SubtaskColumnCreateCallback() {
             @Override
             public void onSuccess(SubtaskColumn updatedColumn) {
-                requireActivity().runOnUiThread(() -> {
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
 
-                    for (int i = 0; i < columns.size(); i++) {
-                        if (columns.get(i).getId() == updatedColumn.getId()) {
-                            columns.set(i, updatedColumn);
-                            columnsAdapter.notifyItemChanged(i);
-                            break;
+                        for (int i = 0; i < columns.size(); i++) {
+                            if (columns.get(i).getId() == updatedColumn.getId()) {
+                                columns.set(i, updatedColumn);
+                                columnsAdapter.notifyItemChanged(i);
+                                break;
+                            }
                         }
-                    }
 
-                    loadSubtasks();
+                        loadSubtasks();
 
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Колонка обновлена", Toast.LENGTH_SHORT).show();
-                });
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Колонка обновлена", Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Ошибка обновления: " + error, Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка обновления: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void createSubtaskColumn(String name) {
@@ -536,22 +582,27 @@ public class SubtasksFragment extends Fragment {
             return;
         }
 
-        apiClient.createSubtaskColumn(token, name, taskId, new SubtaskColumnCreateCallback() {
+        Call call = apiClient.createSubtaskColumn(token, name, taskId, new SubtaskColumnCreateCallback() {
             @Override
             public void onSuccess(SubtaskColumn column) {
-                requireActivity().runOnUiThread(() -> {
-                    columns.add(column);
-                    columnsAdapter.notifyItemInserted(columns.size() - 1);
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        columns.add(column);
+                        columnsAdapter.notifyItemInserted(columns.size() - 1);
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "Ошибка создания колонки: " + error, Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Ошибка создания колонки: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void showAddSubtaskDialog(int columnId, List<Employee> availableAssignees) {
@@ -665,32 +716,37 @@ public class SubtasksFragment extends Fragment {
                 return;
             }
 
-            apiClient.createSubtask(token, jsonBody, new SubtaskCreateCallback() {
+            Call call = apiClient.createSubtask(token, jsonBody, new SubtaskCreateCallback() {
                 @Override
                 public void onSuccess(Subtask subtask) {
-                    requireActivity().runOnUiThread(() -> {
-                        progressBar.setVisibility(View.GONE);
-                        for (SubtaskColumn column : columns) {
-                            if (column.getId() == subtask.getChapterId()) {
-                                column.getSubtasks().add(subtask);
-                                columnsAdapter.notifyItemChanged(columns.indexOf(column));
-                                break;
+                    if (getActivity() != null && isAdded()) {
+                        getActivity().runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            for (SubtaskColumn column : columns) {
+                                if (column.getId() == subtask.getChapterId()) {
+                                    column.getSubtasks().add(subtask);
+                                    columnsAdapter.notifyItemChanged(columns.indexOf(column));
+                                    break;
+                                }
                             }
-                        }
-                        selectedAssignee = null;
-                        Toast.makeText(requireContext(), "Подзадача создана", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    });
+                            selectedAssignee = null;
+                            Toast.makeText(requireContext(), "Подзадача создана", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                        });
+                    }
                 }
 
                 @Override
                 public void onFailure(String error) {
-                    requireActivity().runOnUiThread(() -> {
-                        progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
-                    });
+                    if (getActivity() != null && isAdded()) {
+                        getActivity().runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
                 }
             });
+            callManager.add(call);
         });
 
         dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> dialog.dismiss());
@@ -737,30 +793,35 @@ public class SubtasksFragment extends Fragment {
         }
 
         // Если не создатель - проверяем, является ли ответственным
-        apiClient.getTaskAssignees(token, subtask.getId(), new EmployeesCallback() {
+        Call call = apiClient.getTaskAssignees(token, subtask.getId(), new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> assignees) {
-                requireActivity().runOnUiThread(() -> {
-                    canEditTask = false;
-                    for (Employee assignee : assignees) {
-                        if (assignee.getEmployeeId() == currentUserId) {
-                            canEditTask = true;
-                            break;
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        canEditTask = false;
+                        for (Employee assignee : assignees) {
+                            if (assignee.getEmployeeId() == currentUserId) {
+                                canEditTask = true;
+                                break;
+                            }
                         }
-                    }
-                    onSuccess.run();
-                });
+                        onSuccess.run();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
                 Log.e("TasksFragment", "Error loading assignees: " + error);
-                requireActivity().runOnUiThread(() -> {
-                    canEditTask = false;
-                    onSuccess.run();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        canEditTask = false;
+                        onSuccess.run();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void showTaskDialog(Subtask subtask, List<Employee> availableAssignees) {
@@ -918,7 +979,7 @@ public class SubtasksFragment extends Fragment {
         // Если не нашли локально, запрашиваем с сервера
         String token = prefs.getString("jwt_token", null);
         if (token != null) {
-            apiClient.getEmployeeInfo(token, creatorId, new EmployeeCallback() {
+            Call call = apiClient.getEmployeeInfo(token, creatorId, new EmployeeCallback() {
                 @Override
                 public void onSuccess(Employee employee) {
                     callback.accept(employee.getFullName());
@@ -929,6 +990,7 @@ public class SubtasksFragment extends Fragment {
                     callback.accept("Неизвестный");
                 }
             });
+            callManager.add(call);
         } else {
             callback.accept("Неизвестный");
         }
@@ -968,38 +1030,43 @@ public class SubtasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
-        apiClient.updateSubtask(token, subtaskId, jsonBody, new SubtaskCreateCallback() {
+        Call call = apiClient.updateSubtask(token, subtaskId, jsonBody, new SubtaskCreateCallback() {
             @Override
             public void onSuccess(Subtask updatedTask) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
 
-                    // Обновляем задачу в списке
-                    for (SubtaskColumn column : columns) {
-                        for (int i = 0; i < column.getSubtasks().size(); i++) {
-                            if (column.getSubtasks().get(i).getId() == updatedTask.getId()) {
-                                column.getSubtasks().set(i, updatedTask);
-                                break;
+                        // Обновляем задачу в списке
+                        for (SubtaskColumn column : columns) {
+                            for (int i = 0; i < column.getSubtasks().size(); i++) {
+                                if (column.getSubtasks().get(i).getId() == updatedTask.getId()) {
+                                    column.getSubtasks().set(i, updatedTask);
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    // Обновляем список задач
-                    loadSubtasks();
-                    Toast.makeText(requireContext(), "Подзадача обновлена",
-                            Toast.LENGTH_SHORT).show();
-                });
+                        // Обновляем список задач
+                        loadSubtasks();
+                        Toast.makeText(requireContext(), "Подзадача обновлена",
+                                Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Ошибка: " + error,
-                            Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка: " + error,
+                                Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void showDeleteConfirmationDialog(Subtask subtask) {
@@ -1019,27 +1086,32 @@ public class SubtasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
-        apiClient.deleteSubtask(token, subtask.getId(), new TaskDeleteCallback() {
+        Call call = apiClient.deleteSubtask(token, subtask.getId(), new TaskDeleteCallback() {
             @Override
             public void onSuccess() {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
 
-                    // Удаляем задачу из адаптера
-                    columnsAdapter.removeSubtask(subtask);
+                        // Удаляем задачу из адаптера
+                        columnsAdapter.removeSubtask(subtask);
 
-                    Toast.makeText(requireContext(), "Подзадача удалена", Toast.LENGTH_SHORT).show();
-                });
+                        Toast.makeText(requireContext(), "Подзадача удалена", Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void updateSubtaskChapter(int subtaskId, int chapterId) {
@@ -1049,22 +1121,27 @@ public class SubtasksFragment extends Fragment {
             return;
         }
 
-        apiClient.updateSubtaskChapter(token, subtaskId, chapterId, new ProfileUpdateCallback() {
+        Call call = apiClient.updateSubtaskChapter(token, subtaskId, chapterId, new ProfileUpdateCallback() {
             @Override
             public void onSuccess() {
-                requireActivity().runOnUiThread(() -> {
-                    Log.e("Server", "Chapter updated successfully");
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Log.e("Server", "Chapter updated successfully");
+                    });
+                }
             }
 
             @Override
             public void onFailure(String error) {
-                requireActivity().runOnUiThread(() -> {
-                    showToast("Update failed: " + error);
-                    Log.e("Server","Update failed: " + error);
-                });
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        showToast("Update failed: " + error);
+                        Log.e("Server", "Update failed: " + error);
+                    });
+                }
             }
         });
+        callManager.add(call);
     }
 
     private void showToast(String message) {
@@ -1075,7 +1152,7 @@ public class SubtasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null || projectId == -1) return;
 
-        apiClient.updateSubtaskOrder(token, projectId, columnId, orderedTasks, new ParticipantsCallback() {
+        Call call = apiClient.updateSubtaskOrder(token, projectId, columnId, orderedTasks, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
                 Log.d("SubtasksFragment", "Порядок подзадач сохранён");
@@ -1086,5 +1163,6 @@ public class SubtasksFragment extends Fragment {
                 Log.e("SubtasksFragment", "Ошибка сохранения порядка: " + error);
             }
         });
+        callManager.add(call);
     }
 }

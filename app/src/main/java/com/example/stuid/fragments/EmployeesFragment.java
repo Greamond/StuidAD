@@ -21,11 +21,14 @@ import com.example.stuid.R;
 import com.example.stuid.activity.SignInActivity;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.EmployeesCallback;
+import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.EmployeeAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.Call;
 
 public class EmployeesFragment extends Fragment {
 
@@ -37,6 +40,13 @@ public class EmployeesFragment extends Fragment {
     private SharedPreferences prefs;
     private SearchView searchView;
     private List<Employee> allEmployees = new ArrayList<>();
+    private final SafeCallManager callManager = new SafeCallManager();
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        callManager.cancelAll();
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -123,7 +133,7 @@ public class EmployeesFragment extends Fragment {
             return;
         }
 
-        apiClient.getEmployees(token, new EmployeesCallback() {
+        Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
                 if (isAdded()) {
@@ -155,6 +165,7 @@ public class EmployeesFragment extends Fragment {
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void hideLoaders() {
@@ -190,5 +201,6 @@ public class EmployeesFragment extends Fragment {
         swipeRefresh = null;
         progressBar = null;
         recyclerView = null;
+        callManager.clear();
     }
 }

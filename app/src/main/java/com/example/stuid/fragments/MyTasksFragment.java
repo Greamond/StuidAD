@@ -20,6 +20,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.EmployeesCallback;
+import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.api.TasksCallback;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.MyTaskAdapter;
@@ -27,6 +28,8 @@ import com.example.stuid.models.Task;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.Call;
 
 public class MyTasksFragment extends Fragment {
 
@@ -40,6 +43,19 @@ public class MyTasksFragment extends Fragment {
     private int currentUserId;
     private SearchView searchView;
     private List<Task> allTasks = new ArrayList<>();
+    private final SafeCallManager callManager = new SafeCallManager();
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        callManager.cancelAll();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        callManager.clear();
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -112,7 +128,7 @@ public class MyTasksFragment extends Fragment {
         }
 
         // Сначала загружаем пользователей
-        apiClient.getEmployees(token, new EmployeesCallback() {
+        Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> loadedEmployees) {
                 employees.clear();
@@ -130,10 +146,11 @@ public class MyTasksFragment extends Fragment {
                 });
             }
         });
+        callManager.add(call);
     }
 
     private void loadTasks(String token) {
-        apiClient.getTasksByAssignee(token, currentUserId, new TasksCallback() {
+        Call call = apiClient.getTasksByAssignee(token, currentUserId, new TasksCallback() {
             @Override
             public void onSuccess(List<Task> tasks) {
                 requireActivity().runOnUiThread(() -> {
@@ -161,6 +178,7 @@ public class MyTasksFragment extends Fragment {
                 });
             }
         });
+        callManager.add(call);
     }
 
     private void refreshData() {

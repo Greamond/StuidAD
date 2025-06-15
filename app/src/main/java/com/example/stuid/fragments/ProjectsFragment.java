@@ -5,7 +5,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.telecom.Call;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -40,6 +39,7 @@ import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.ParticipantsCallback;
 import com.example.stuid.api.ProjectCreateCallback;
 import com.example.stuid.api.ProjectsCallback;
+import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
 import com.example.stuid.models.ProjectAdapter;
@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
@@ -65,6 +66,19 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     private int currentUserId;
     private boolean isArchiveMode = false;
     private TextView tvTitle;
+    private final SafeCallManager callManager = new SafeCallManager();
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        callManager.cancelAll();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        callManager.clear();
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -103,7 +117,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         swipeRefresh.setOnRefreshListener(this::loadInitialData);
 
         apiClient = new ApiClient();
-        prefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+        prefs = getActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
         currentUserId = prefs.getInt("employee_id", -1);
 
 
@@ -129,7 +143,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         }
 
         // Сначала загружаем сотрудников, затем проекты
-        apiClient.getEmployees(token, new EmployeesCallback() {
+        Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
                 if (getActivity() != null && isAdded()) {
@@ -144,7 +158,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             public void onFailure(String error) {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Ошибка загрузки сотрудников: " + error,
                                 Toast.LENGTH_SHORT).show();
                         loadUserProjects(); // Все равно пытаемся загрузить проекты
@@ -152,6 +166,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void loadUserProjects() {
@@ -163,7 +178,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
-        apiClient.getUserProjects(token, currentUserId, new ProjectsCallback() {
+        Call call = apiClient.getUserProjects(token, currentUserId, new ProjectsCallback() {
             @Override
             public void onSuccess(List<Project> projects) {
                 List<Project> filteredList = new ArrayList<>();
@@ -192,13 +207,14 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void showAddProjectDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle("Новый проект");
 
-        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_project, null);
+        View dialogView = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_add_project, null);
         builder.setView(dialogView);
 
         TextInputEditText etName = dialogView.findViewById(R.id.etProjectName);
@@ -305,7 +321,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
-        apiClient.getEmployees(token, new EmployeesCallback() {
+        Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
                 if (getActivity() != null && isAdded()) {
@@ -313,7 +329,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                         allEmployees = new ArrayList<>(employees); // Сохраняем копию списка
 
                         ArrayAdapter<Employee> adapter = new ArrayAdapter<Employee>(
-                                requireContext(),
+                                getActivity(),
                                 android.R.layout.simple_dropdown_item_1line,
                                 allEmployees // Используем сохраненный список
                         ) {
@@ -380,11 +396,12 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             public void onFailure(String error) {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), "Ошибка загрузки сотрудников: " + error, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), "Ошибка загрузки сотрудников: " + error, Toast.LENGTH_SHORT).show();
                     });
                 }
             }
         });
+        callManager.add(call);
     }
 
     // Проверяем, не добавлен ли уже этот сотрудник
@@ -393,7 +410,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             View child = container.getChildAt(i);
             Integer id = (Integer) child.getTag();
             if (id != null && id == employeeId) {
-                Toast.makeText(requireContext(), "Этот сотрудник уже добавлен", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Этот сотрудник уже добавлен", Toast.LENGTH_SHORT).show();
                 return true;
             }
         }
@@ -401,7 +418,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void addSelectedEmployee(Employee employee, LinearLayout container) {
-        View employeeView = LayoutInflater.from(requireContext())
+        View employeeView = LayoutInflater.from(getActivity())
                 .inflate(R.layout.item_selected_employee, container, false);
 
         TextView tvName = employeeView.findViewById(R.id.tvEmployeeName);
@@ -438,7 +455,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         Project newProject = new Project(0, name, description, isPublic, 0);
         progressBar.setVisibility(View.VISIBLE);
 
-        apiClient.createProject(token, newProject, new ProjectCreateCallback() {
+        Call call = apiClient.createProject(token, newProject, new ProjectCreateCallback() {
             @Override
             public void onSuccess(Project createdProject) {
                 if (!isPublic && !participantIds.isEmpty()) {
@@ -450,7 +467,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                             String message = isPublic ?
                                     "Публичный проект '" + createdProject.getName() + "' создан" :
                                     "Проект '" + createdProject.getName() + "' создан";
-                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
                             adapter.addProject(createdProject);
                         });
                     }
@@ -472,16 +489,17 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void addParticipantsToProject(String token, int projectId, List<Integer> participantIds) {
-        apiClient.addParticipants(token, projectId, participantIds, new ParticipantsCallback() {
+        Call call = apiClient.addParticipants(token, projectId, participantIds, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Проект создан и участники добавлены",
                                 Toast.LENGTH_SHORT).show();
                         loadUserProjects(); // Обновляем список проектов
@@ -494,7 +512,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Проект создан, но не удалось добавить участников: " + error,
                                 Toast.LENGTH_LONG).show();
                         loadUserProjects(); // Все равно обновляем список проектов
@@ -502,6 +520,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void hideLoaders() {
@@ -510,12 +529,12 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void showError(String message) {
-        Toast.makeText(requireContext(), "Error: " + message, Toast.LENGTH_LONG).show();
+        Toast.makeText(getActivity(), "Error: " + message, Toast.LENGTH_LONG).show();
     }
 
     private void redirectToLogin() {
-        startActivity(new Intent(requireActivity(), SignInActivity.class));
-        requireActivity().finish();
+        startActivity(new Intent(getActivity(), SignInActivity.class));
+        getActivity().finish();
     }
 
     @Override
@@ -525,10 +544,10 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void showProjectDetailsDialog(Project project) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle("Информация о проекте");
 
-        View dialogView = LayoutInflater.from(requireContext())
+        View dialogView = LayoutInflater.from(getActivity())
                 .inflate(R.layout.dialog_view_project, null);
         builder.setView(dialogView);
 
@@ -559,9 +578,9 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void showEditProjectDialog(Project project) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle("Редактировать проект");
-        View dialogView = LayoutInflater.from(requireContext())
+        View dialogView = LayoutInflater.from(getActivity())
                 .inflate(R.layout.dialog_add_project, null);
         builder.setView(dialogView);
 
@@ -667,10 +686,10 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         }
 
         container.removeAllViews();
-        ProgressBar progressBar = new ProgressBar(requireContext());
+        ProgressBar progressBar = new ProgressBar(getActivity());
         container.addView(progressBar);
 
-        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
+        Call call = apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
                 if (getActivity() != null && isAdded()) {
@@ -688,14 +707,15 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         container.removeAllViews();
-                        TextView errorView = new TextView(requireContext());
+                        TextView errorView = new TextView(getActivity());
                         errorView.setText("Ошибка загрузки участников");
-                        errorView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark));
+                        errorView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.holo_red_dark));
                         container.addView(errorView);
                     });
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void updateProject(int projectId, String name, String description,
@@ -710,7 +730,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         Project updatedProject = new Project(projectId, name, description, isPublic, 0);
 
-        apiClient.updateProject(token, updatedProject, new ProjectCreateCallback() {
+        Call call = apiClient.updateProject(token, updatedProject, new ProjectCreateCallback() {
             @Override
             public void onSuccess(Project project) {
                 // После успешного обновления проекта обновляем участников
@@ -727,16 +747,17 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void updateProjectParticipants(String token, int projectId, List<Integer> newParticipantIds) {
-        apiClient.updateProjectParticipants(token, projectId, newParticipantIds, new ParticipantsCallback() {
+        Call call = apiClient.updateProjectParticipants(token, projectId, newParticipantIds, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Проект успешно обновлен", Toast.LENGTH_SHORT).show();
                         loadUserProjects(); // Обновляем список проектов
                     });
@@ -748,7 +769,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Проект обновлен, но не удалось обновить участников: " + error,
                                 Toast.LENGTH_LONG).show();
                         loadUserProjects(); // Все равно обновляем список проектов
@@ -756,10 +777,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void showDeleteConfirmationDialog(int projectId) {
-        new AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(getActivity())
                 .setTitle("Удаление проекта")
                 .setMessage("Вы уверены, что хотите удалить этот проект?")
                 .setPositiveButton("Удалить", (dialog, which) -> {
@@ -778,13 +800,13 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         progressBar.setVisibility(View.VISIBLE);
 
-        apiClient.deleteProject(token, projectId, new ParticipantsCallback() {
+        Call call = apiClient.deleteProject(token, projectId, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Проект успешно удален", Toast.LENGTH_SHORT).show();
                         loadUserProjects(); // Обновляем список проектов
                     });
@@ -801,6 +823,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                 }
             }
         });
+        callManager.add(call);
     }
 
     private void loadParticipantsForProject(int projectId, LinearLayout container) {
@@ -810,14 +833,14 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
-        apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
+        Call call = apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
                         container.removeAllViews();
                         for (Employee participant : participants) {
-                            TextView participantView = new TextView(requireContext());
+                            TextView participantView = new TextView(getActivity());
                             participantView.setText(participant.getFullName());
                             participantView.setPadding(0, 8, 0, 8);
                             container.addView(participantView);
@@ -830,13 +853,14 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             public void onFailure(String error) {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(getActivity(),
                                 "Ошибка загрузки участников: " + error,
                                 Toast.LENGTH_SHORT).show();
                     });
                 }
             }
         });
+        callManager.add(call);
     }
 
     @Override
@@ -866,7 +890,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         String direction = isArchiveMode
                 ? "из архива"
                 : "в архив";
-        new AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(getActivity())
                 .setTitle("Архивировать проект?")
                 .setMessage("Вы уверены, что хотите переместить этот проект" + direction + "?")
                 .setPositiveButton("Да", (dialog, which) -> archiveProject(project))
@@ -885,12 +909,12 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             progressBar.setVisibility(View.VISIBLE);
         }
 
-        apiClient.archiveProject(token, project.getId(), new Callback() {
+        Call call = apiClient.archiveProject(token, project.getId(), new Callback() {
             @Override
             public void onFailure(@NonNull okhttp3.Call call, @NonNull IOException e) {
                 if (getActivity() != null && isAdded()) {
                     getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), "Ошибка сети", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), "Ошибка сети", Toast.LENGTH_SHORT).show();
                         hideLoaders();
                     });
                 }
@@ -901,19 +925,20 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
                     if (getActivity() != null && isAdded()) {
                         getActivity().runOnUiThread(() -> {
                             adapter.removeProject(project); // Удаляем проект из списка
-                            Toast.makeText(requireContext(), "Проект перемещён в архив", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getActivity(), "Проект перемещён в архив", Toast.LENGTH_SHORT).show();
                             hideLoaders();
                         });
                     }
                 } else {
                     if (getActivity() != null && isAdded()) {
                         getActivity().runOnUiThread(() -> {
-                            Toast.makeText(requireContext(), "Ошибка архивации проекта", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getActivity(), "Ошибка архивации проекта", Toast.LENGTH_SHORT).show();
                             hideLoaders();
                         });
                     }
                 }
             }
         });
+        callManager.add(call);
     }
 }
