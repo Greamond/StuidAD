@@ -29,6 +29,7 @@ import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.AuthCallback;
 import com.example.stuid.models.Employee;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class RegInActivity extends AppCompatActivity {
     private ApiClient apiClient;
@@ -140,23 +141,29 @@ public class RegInActivity extends AppCompatActivity {
 
             if (!isValid) return;
 
-            // Все проверки пройдены — регистрируем пользователя
-            apiClient.registerUser(firstName, lastName, middleName, email, password, new AuthCallback() {
-                @Override
-                public void onSuccess(Employee employee, String token) {
-                    runOnUiThread(() -> {
-                        apiClient.setAuthToken(token);
-                        saveUserData(employee, token);
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    String FCMToken = task.getResult();
 
-                        Intent intent = new Intent(RegInActivity.this, MainActivity.class);
-                        startActivity(intent);
-                        finish();
+                    // Все проверки пройдены — регистрируем пользователя
+                    apiClient.registerUser(firstName, lastName, middleName, email, password, FCMToken, new AuthCallback() {
+                        @Override
+                        public void onSuccess(Employee employee, String token) {
+                            runOnUiThread(() -> {
+                                apiClient.setAuthToken(token);
+                                saveUserData(employee, token);
+
+                                Intent intent = new Intent(RegInActivity.this, MainActivity.class);
+                                startActivity(intent);
+                                finish();
+                            });
+                        }
+
+                        @Override
+                        public void onFailure(String error) {
+                            runOnUiThread(() -> Toast.makeText(RegInActivity.this, "Ошибка регистрации: " + error, Toast.LENGTH_LONG).show());
+                        }
                     });
-                }
-
-                @Override
-                public void onFailure(String error) {
-                    runOnUiThread(() -> Toast.makeText(RegInActivity.this, "Ошибка регистрации: " + error, Toast.LENGTH_LONG).show());
                 }
             });
         });

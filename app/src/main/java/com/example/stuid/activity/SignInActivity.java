@@ -30,6 +30,7 @@ import com.example.stuid.api.AuthPasswordResetCallback;
 import com.example.stuid.models.Employee;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.json.JSONObject;
 
@@ -100,25 +101,31 @@ public class SignInActivity extends AppCompatActivity {
             }
             etPassword.setError(null);
 
-            apiClient.loginUser(email, password, new AuthCallback() {
-                @Override
-                public void onSuccess(Employee employee, String token) {
-                    runOnUiThread(() -> {
-                        // Сохраняем данные пользователя
-                        apiClient.setAuthToken(token);
-                        saveUserData(employee, token);
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    String FCMToken = task.getResult();
 
-                        // Переходим на главный экран
-                        Intent intent = new Intent(SignInActivity.this, MainActivity.class);
-                        startActivity(intent);
-                        finish();
-                    });
-                }
+                    apiClient.loginUser(email, password, FCMToken, new AuthCallback() {
+                        @Override
+                        public void onSuccess(Employee employee, String token) {
+                            runOnUiThread(() -> {
+                                // Сохраняем данные пользователя
+                                apiClient.setAuthToken(token);
+                                saveUserData(employee, token);
 
-                @Override
-                public void onFailure(String error) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(SignInActivity.this, "Ошибка авторизации: " + error, Toast.LENGTH_LONG).show();
+                                // Переходим на главный экран
+                                Intent intent = new Intent(SignInActivity.this, MainActivity.class);
+                                startActivity(intent);
+                                finish();
+                            });
+                        }
+
+                        @Override
+                        public void onFailure(String error) {
+                            runOnUiThread(() -> {
+                                Toast.makeText(SignInActivity.this, "Ошибка авторизации: " + error, Toast.LENGTH_LONG).show();
+                            });
+                        }
                     });
                 }
             });

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.androidApplication)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -30,6 +31,8 @@ android {
 
 dependencies {
     implementation("com.github.bumptech.glide:glide:4.12.0")
+    implementation(libs.firebase.messaging)
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
     annotationProcessor("com.github.bumptech.glide:compiler:4.12.0")
     implementation("com.google.android.material:material:1.6.0")
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")

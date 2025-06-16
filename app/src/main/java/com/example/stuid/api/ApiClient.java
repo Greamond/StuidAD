@@ -10,6 +10,7 @@ import com.example.stuid.models.Subtask;
 import com.example.stuid.models.SubtaskColumn;
 import com.example.stuid.models.Task;
 import com.example.stuid.models.TaskColumn;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -47,7 +48,7 @@ public class ApiClient {
         this.client = new OkHttpClient();
     }
 
-    public Call loginUser(String email, String password, final AuthCallback callback) {
+    public Call loginUser(String email, String password, String FCMToken, final AuthCallback callback) {
         String hashedPassword = hashPassword(password);
 
         // Создаем JSON тело запроса
@@ -55,6 +56,7 @@ public class ApiClient {
         try {
             jsonBody.put("Email", email);
             jsonBody.put("Password", hashedPassword);
+            jsonBody.put("FCMToken", FCMToken);
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
             return null;
@@ -80,7 +82,7 @@ public class ApiClient {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("NetworkError", "Error: " + e.getMessage());
-                callback.onFailure("Network error: " + e.getMessage());
+                callback.onFailure("нет подключения к серверу");
             }
 
             @Override
@@ -88,7 +90,7 @@ public class ApiClient {
                 if (!response.isSuccessful()) {
                     String errorBody = response.body() != null ? response.body().string() : "empty body";
                     Log.e("ServerError", "Code: " + response.code() + ", Body: " + errorBody);
-                    callback.onFailure("Server error: " + response.code() + ", " + errorBody);
+                    callback.onFailure("неверный логин или пароль");
                     return;
                 }
 
@@ -117,7 +119,7 @@ public class ApiClient {
     }
 
     public Call registerUser(String firstName, String lastName, String middleName,
-                             String email, String password,
+                             String email, String password, String FCMToken,
                              final AuthCallback callback) {
         String hashedPassword = hashPassword(password);
 
@@ -128,6 +130,7 @@ public class ApiClient {
             jsonBody.put("MiddleName", middleName);
             jsonBody.put("Email", email);
             jsonBody.put("Password", hashedPassword);
+            jsonBody.put("FCMToken", FCMToken);
         } catch (JSONException e) {
             callback.onFailure("Error creating request: " + e.getMessage());
             return null;
@@ -153,7 +156,7 @@ public class ApiClient {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e("NetworkError", "Error: " + e.getMessage());
-                callback.onFailure("Network error: " + e.getMessage());
+                callback.onFailure("нет подключения к серверу");
             }
 
             @Override
@@ -161,7 +164,7 @@ public class ApiClient {
                 if (!response.isSuccessful()) {
                     String errorBody = response.body() != null ? response.body().string() : "empty body";
                     Log.e("ServerError", "Code: " + response.code() + ", Body: " + errorBody);
-                    callback.onFailure("Server error: " + response.code() + ", " + errorBody);
+                    callback.onFailure("почта занята");
                     return;
                 }
 

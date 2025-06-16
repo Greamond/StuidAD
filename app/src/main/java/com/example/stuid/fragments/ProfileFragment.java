@@ -359,18 +359,6 @@ public class ProfileFragment extends Fragment {
         callManager.add(call);
     }
 
-    private boolean validateInput(String lastName, String firstName) {
-        if (lastName.isEmpty()) {
-            Toast.makeText(requireContext(), "Введите фамилию", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        if (firstName.isEmpty()) {
-            Toast.makeText(requireContext(), "Введите имя", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        return true;
-    }
-
     private void openImageChooser() {
         Intent intent = new Intent();
         intent.setType("image/*");

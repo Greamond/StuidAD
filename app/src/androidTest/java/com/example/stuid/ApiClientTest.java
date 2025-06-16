@@ -37,6 +37,7 @@ public class ApiClientTest {
 
     private ApiClient apiClient;
     private final String testToken = "test_token";
+    private final String testFCMToken = "test_token";
     private final String testUrl = "http://10.0.2.2:5000/api/Users/employees";
 
     @Before
