@@ -40,6 +40,7 @@ import com.example.stuid.api.ParticipantsCallback;
 import com.example.stuid.api.ProjectCreateCallback;
 import com.example.stuid.api.ProjectsCallback;
 import com.example.stuid.api.SafeCallManager;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Project;
 import com.example.stuid.models.ProjectAdapter;
@@ -142,6 +143,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             progressBar.setVisibility(View.VISIBLE);
         }
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Сначала загружаем сотрудников, затем проекты
         Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
@@ -175,6 +181,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         if (token == null || currentUserId == -1) {
             redirectToLogin();
+            return;
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -321,6 +332,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
@@ -455,6 +471,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         Project newProject = new Project(0, name, description, isPublic, 0);
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.createProject(token, newProject, new ProjectCreateCallback() {
             @Override
             public void onSuccess(Project createdProject) {
@@ -493,6 +514,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void addParticipantsToProject(String token, int projectId, List<Integer> participantIds) {
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.addParticipants(token, projectId, participantIds, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
@@ -689,6 +715,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         ProgressBar progressBar = new ProgressBar(getActivity());
         container.addView(progressBar);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
@@ -730,6 +761,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         Project updatedProject = new Project(projectId, name, description, isPublic, 0);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.updateProject(token, updatedProject, new ProjectCreateCallback() {
             @Override
             public void onSuccess(Project project) {
@@ -751,6 +787,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void updateProjectParticipants(String token, int projectId, List<Integer> newParticipantIds) {
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.updateProjectParticipants(token, projectId, newParticipantIds, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
@@ -800,6 +841,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.deleteProject(token, projectId, new ParticipantsCallback() {
             @Override
             public void onSuccess() {
@@ -830,6 +876,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         String token = prefs.getString("jwt_token", null);
         if (token == null) {
             redirectToLogin();
+            return;
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -907,6 +958,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         if (!swipeRefresh.isRefreshing()) {
             progressBar.setVisibility(View.VISIBLE);
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
         }
 
         Call call = apiClient.archiveProject(token, project.getId(), new Callback() {

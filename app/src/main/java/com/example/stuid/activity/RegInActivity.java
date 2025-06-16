@@ -27,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.AuthCallback;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.Employee;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -144,6 +145,11 @@ public class RegInActivity extends AppCompatActivity {
             FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
                     String FCMToken = task.getResult();
+
+                    if (!CheckInternet.isNetworkConnected(RegInActivity.this)) {
+                        Toast.makeText(RegInActivity.this, "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
 
                     // Все проверки пройдены — регистрируем пользователя
                     apiClient.registerUser(firstName, lastName, middleName, email, password, FCMToken, new AuthCallback() {

@@ -18,10 +18,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.stuid.R;
+import com.example.stuid.activity.RegInActivity;
 import com.example.stuid.activity.SignInActivity;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.SafeCallManager;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.EmployeeAdapter;
 
@@ -130,6 +132,11 @@ public class EmployeesFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) {
             handleAuthError();
+            return;
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
             return;
         }
 

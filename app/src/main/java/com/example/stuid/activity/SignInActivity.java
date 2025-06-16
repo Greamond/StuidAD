@@ -1,5 +1,7 @@
 package com.example.stuid.activity;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -27,6 +29,7 @@ import com.example.stuid.R;
 import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.AuthCallback;
 import com.example.stuid.api.AuthPasswordResetCallback;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.Employee;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -104,6 +107,16 @@ public class SignInActivity extends AppCompatActivity {
             FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
                     String FCMToken = task.getResult();
+
+                    if (!CheckInternet.isNetworkConnected(SignInActivity.this)) {
+                        Toast.makeText(SignInActivity.this, "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if (!CheckInternet.isNetworkConnected(SignInActivity.this)) {
+                        Toast.makeText(SignInActivity.this, "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
 
                     apiClient.loginUser(email, password, FCMToken, new AuthCallback() {
                         @Override
@@ -277,6 +290,11 @@ public class SignInActivity extends AppCompatActivity {
 
         Random random = new Random();
         int code = 100000 + random.nextInt(900000);
+
+        if (!CheckInternet.isNetworkConnected(SignInActivity.this)) {
+            Toast.makeText(SignInActivity.this, "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         apiClient.sendPasswordResetEmail(email, code, new AuthPasswordResetCallback() {
             @Override
@@ -544,6 +562,11 @@ public class SignInActivity extends AppCompatActivity {
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Смена пароля...");
         progressDialog.show();
+
+        if (!CheckInternet.isNetworkConnected(SignInActivity.this)) {
+            Toast.makeText(SignInActivity.this, "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         apiClient.resetPassword(email, newPassword, new AuthPasswordResetCallback() {
             @Override

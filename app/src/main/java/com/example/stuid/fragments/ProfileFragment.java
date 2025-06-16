@@ -33,6 +33,7 @@ import com.example.stuid.api.ProfilePhotoCallback;
 import com.example.stuid.api.ProfilePhotoDownloadCallback;
 import com.example.stuid.api.ProfileUpdateCallback;
 import com.example.stuid.api.SafeCallManager;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.classes.FileUtil;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.textfield.TextInputLayout;
@@ -150,6 +151,11 @@ public class ProfileFragment extends Fragment {
                         .into(ivPhoto);
                 return;
             }
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
         }
 
         // Если локального нет, загружаем с сервера
@@ -322,6 +328,11 @@ public class ProfileFragment extends Fragment {
         int employeeId = prefs.getInt("employee_id", 0);
         String token = prefs.getString("jwt_token", "");
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.updateProfile(employeeId, lastName, firstName, middleName,
                 description, token, new ProfileUpdateCallback() {
                     @Override
@@ -377,6 +388,11 @@ public class ProfileFragment extends Fragment {
     }
 
     private void saveImageToStorage(Uri imageUri) {
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         progressDialog = new ProgressDialog(requireContext());
         progressDialog.setMessage("Загрузка изображения...");
         progressDialog.setCancelable(false);

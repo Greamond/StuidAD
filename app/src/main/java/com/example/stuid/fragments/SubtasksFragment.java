@@ -54,6 +54,7 @@ import com.example.stuid.api.SubtasksCallback;
 import com.example.stuid.api.TaskCreateCallback;
 import com.example.stuid.api.TaskDeleteCallback;
 import com.example.stuid.api.TasksCallback;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.ColumnsAdapter;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Subtask;
@@ -214,6 +215,11 @@ public class SubtasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
@@ -244,6 +250,11 @@ public class SubtasksFragment extends Fragment {
     private void loadTaskAssignees(int taskId, Runnable onComplete) {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.getTaskAssignees(token, taskId, new EmployeesCallback() {
             @Override
@@ -284,6 +295,11 @@ public class SubtasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getSubtaskColumnsForTask(token, taskId, new SubtaskColumnsCallback() {
             @Override
             public void onSuccess(List<SubtaskColumn> serverColumns) {
@@ -313,6 +329,11 @@ public class SubtasksFragment extends Fragment {
     private void loadSubtasks() {
         String token = prefs.getString("jwt_token", null);
         if (token == null || taskId == -1) return;
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.getTaskSubtasks(token, taskId, new SubtasksCallback() {
             @Override
@@ -489,6 +510,11 @@ public class SubtasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.deleteSubtaskColumn(token, column.getId(), new TaskDeleteCallback() {
             @Override
             public void onSuccess() {
@@ -533,6 +559,11 @@ public class SubtasksFragment extends Fragment {
         }
 
         progressBar.setVisibility(View.VISIBLE);
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.updateSubtaskColumn(token, column.getId(), jsonBody, new SubtaskColumnCreateCallback() {
             @Override
@@ -579,6 +610,11 @@ public class SubtasksFragment extends Fragment {
         // Убедитесь, что projectId доступен в этом контексте
         if (taskId == -1) {
             Toast.makeText(requireContext(), "Неверный проект", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -716,6 +752,11 @@ public class SubtasksFragment extends Fragment {
                 return;
             }
 
+            if (!CheckInternet.isNetworkConnected(requireActivity())) {
+                Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             Call call = apiClient.createSubtask(token, jsonBody, new SubtaskCreateCallback() {
                 @Override
                 public void onSuccess(Subtask subtask) {
@@ -789,6 +830,11 @@ public class SubtasksFragment extends Fragment {
                 canEditTask = true;
                 onSuccess.run();
             });
+            return;
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -979,6 +1025,11 @@ public class SubtasksFragment extends Fragment {
         // Если не нашли локально, запрашиваем с сервера
         String token = prefs.getString("jwt_token", null);
         if (token != null) {
+            if (!CheckInternet.isNetworkConnected(requireActivity())) {
+                Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             Call call = apiClient.getEmployeeInfo(token, creatorId, new EmployeeCallback() {
                 @Override
                 public void onSuccess(Employee employee) {
@@ -1029,6 +1080,11 @@ public class SubtasksFragment extends Fragment {
         }
 
         progressBar.setVisibility(View.VISIBLE);
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.updateSubtask(token, subtaskId, jsonBody, new SubtaskCreateCallback() {
             @Override
@@ -1086,6 +1142,11 @@ public class SubtasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.deleteSubtask(token, subtask.getId(), new TaskDeleteCallback() {
             @Override
             public void onSuccess() {
@@ -1121,6 +1182,11 @@ public class SubtasksFragment extends Fragment {
             return;
         }
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.updateSubtaskChapter(token, subtaskId, chapterId, new ProfileUpdateCallback() {
             @Override
             public void onSuccess() {
@@ -1151,6 +1217,11 @@ public class SubtasksFragment extends Fragment {
     public void sendNewOrderToServer(int projectId, int columnId, List<Subtask> orderedTasks) {
         String token = prefs.getString("jwt_token", null);
         if (token == null || projectId == -1) return;
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.updateSubtaskOrder(token, projectId, columnId, orderedTasks, new ParticipantsCallback() {
             @Override

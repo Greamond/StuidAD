@@ -22,6 +22,7 @@ import com.example.stuid.api.ApiClient;
 import com.example.stuid.api.EmployeesCallback;
 import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.api.TasksCallback;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.MyTaskAdapter;
 import com.example.stuid.models.Task;
@@ -127,6 +128,11 @@ public class MyTasksFragment extends Fragment {
             return;
         }
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Сначала загружаем пользователей
         Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
@@ -150,6 +156,11 @@ public class MyTasksFragment extends Fragment {
     }
 
     private void loadTasks(String token) {
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getTasksByAssignee(token, currentUserId, new TasksCallback() {
             @Override
             public void onSuccess(List<Task> tasks) {

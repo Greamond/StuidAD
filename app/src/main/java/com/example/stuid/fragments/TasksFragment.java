@@ -41,6 +41,7 @@ import com.example.stuid.api.SafeCallManager;
 import com.example.stuid.api.TaskCreateCallback;
 import com.example.stuid.api.TaskDeleteCallback;
 import com.example.stuid.api.TasksCallback;
+import com.example.stuid.classes.CheckInternet;
 import com.example.stuid.models.ColumnsAdapter;
 import com.example.stuid.models.Employee;
 import com.example.stuid.models.Task;
@@ -195,6 +196,11 @@ public class TasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getProjectParticipants(token, projectId, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> participants) {
@@ -226,6 +232,11 @@ public class TasksFragment extends Fragment {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.getEmployees(token, new EmployeesCallback() {
             @Override
             public void onSuccess(List<Employee> employees) {
@@ -248,6 +259,11 @@ public class TasksFragment extends Fragment {
     private void loadColumns() {
         String token = prefs.getString("jwt_token", null);
         if (token == null) return;
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.getColumnsForProject(token, projectId, new ColumnsCallback() {
             @Override
@@ -279,6 +295,11 @@ public class TasksFragment extends Fragment {
     private void loadTasks() {
         String token = prefs.getString("jwt_token", null);
         if (token == null || projectId == -1) return;
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.getProjectTasks(token, projectId, new TasksCallback() {
             @Override
@@ -437,6 +458,11 @@ public class TasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.deleteColumn(token, column.getId(), new TaskDeleteCallback() {
             @Override
             public void onSuccess() {
@@ -478,6 +504,11 @@ public class TasksFragment extends Fragment {
         }
 
         progressBar.setVisibility(View.VISIBLE);
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.updateColumn(token, columnId, jsonBody, new ColumnCreateCallback() {
             @Override
@@ -523,6 +554,11 @@ public class TasksFragment extends Fragment {
         // Убедитесь, что projectId доступен в этом контексте
         if (projectId == -1) {
             Toast.makeText(requireContext(), "Неверный проект", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -640,6 +676,12 @@ public class TasksFragment extends Fragment {
             if (token == null) return;
 
             progressBar.setVisibility(View.VISIBLE);
+
+            if (!CheckInternet.isNetworkConnected(requireActivity())) {
+                Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             Call call = apiClient.createTask(token, jsonBody, new TaskCreateCallback() {
                 @Override
                 public void onSuccess(Task task) {
@@ -777,6 +819,12 @@ public class TasksFragment extends Fragment {
             });
             return;
         }
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Если не создатель - проверяем, является ли ответственным
         Call call = apiClient.getTaskAssignees(token, task.getId(), new EmployeesCallback() {
             @Override
@@ -983,6 +1031,11 @@ public class TasksFragment extends Fragment {
         // Если не нашли локально, запрашиваем с сервера
         String token = prefs.getString("jwt_token", null);
         if (token != null) {
+            if (!CheckInternet.isNetworkConnected(requireActivity())) {
+                Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             Call call = apiClient.getEmployeeInfo(token, creatorId, new EmployeeCallback() {
                 @Override
                 public void onSuccess(Employee employee) {
@@ -1010,6 +1063,11 @@ public class TasksFragment extends Fragment {
         container.removeAllViews();
         ProgressBar progressBar = new ProgressBar(requireContext());
         container.addView(progressBar);
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.getTaskAssignees(token, taskId, new EmployeesCallback() {
             @Override
@@ -1093,6 +1151,11 @@ public class TasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.updateTask(token, taskId, jsonBody, new TaskCreateCallback() {
             @Override
             public void onSuccess(Task updatedTask) {
@@ -1150,6 +1213,11 @@ public class TasksFragment extends Fragment {
 
         progressBar.setVisibility(View.VISIBLE);
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.deleteTask(token, task.getId(), new TaskDeleteCallback() {
             @Override
             public void onSuccess() {
@@ -1185,6 +1253,11 @@ public class TasksFragment extends Fragment {
             return;
         }
 
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Call call = apiClient.updateTaskChapter(token, taskId, chapterId, new ProfileUpdateCallback() {
             @Override
             public void onSuccess() {
@@ -1215,6 +1288,11 @@ public class TasksFragment extends Fragment {
     public void sendNewOrderToServer(int projectId, int columnId, List<Task> orderedTasks) {
         String token = prefs.getString("jwt_token", null);
         if (token == null || projectId == -1) return;
+
+        if (!CheckInternet.isNetworkConnected(requireActivity())) {
+            Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Call call = apiClient.updateTaskOrder(token, projectId, columnId, orderedTasks, new ParticipantsCallback() {
             @Override
