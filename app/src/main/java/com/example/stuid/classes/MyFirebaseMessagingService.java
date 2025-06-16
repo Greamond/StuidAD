@@ -35,13 +35,35 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 case "task_assignment":
                     showTaskNotification(remoteMessage.getData());
                     break;
+                case "task_assignment_remove":
+                    showTaskRemoveNotification(remoteMessage.getData());
+                    break;
                 case "project_invite":
                     showProjectNotification(remoteMessage.getData());
+                    break;
+                case "project_removal":
+                    showProjectRemovalNotification(remoteMessage.getData());
                     break;
                 default:
                     break;
             }
         }
+    }
+
+    private void showProjectRemovalNotification(Map<String, String> data) {
+        String title = "Исключение из проекта";
+        String body = String.format("%s исключил(а) вас из проекта '%s'",
+                data.get("actionBy"),
+                data.get("projectName"));
+        showNotification(title, body);
+    }
+
+    private void showTaskRemoveNotification(Map<String, String> data) {
+        String title = "Снятие с задачи";
+        String body = String.format("%s снял(а) вас с задачи '%s'",
+                data.get("assigner"),
+                data.get("taskName"));
+        showNotification(title, body);
     }
 
     private void showTaskNotification(Map<String, String> data) {
