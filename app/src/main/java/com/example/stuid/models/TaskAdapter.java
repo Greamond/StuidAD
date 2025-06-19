@@ -116,7 +116,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             }
         });
 
-        holder.itemView.setOnLongClickListener(v -> {
+        holder.itemView.findViewById(R.id.drag_handle).setOnLongClickListener(v -> {
             TasksFragment.setDraggedTask(task);
 
             ClipData.Item item = new ClipData.Item((CharSequence) null);

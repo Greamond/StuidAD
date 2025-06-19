@@ -105,7 +105,7 @@ public class SubtaskAdapter extends RecyclerView.Adapter<SubtaskAdapter.ViewHold
         Subtask subtask = subtasks.get(position);
         holder.bind(subtask);
 
-        holder.itemView.setOnLongClickListener(v -> {
+        holder.itemView.findViewById(R.id.drag_handle).setOnLongClickListener(v -> {
             SubtasksFragment.setDraggedSubtask(subtask);
 
             ClipData.Item item = new ClipData.Item((CharSequence) null);
@@ -126,7 +126,7 @@ public class SubtaskAdapter extends RecyclerView.Adapter<SubtaskAdapter.ViewHold
                 if (itemTouchHelper != null) {
                     itemTouchHelper.startDrag(holder);
                 } else {
-                    Log.e("SubtaskAdapter", "ItemTouchHelper is null");
+                    Log.e("TaskAdapter", "ItemTouchHelper is null");
                 }
             }
             return false;

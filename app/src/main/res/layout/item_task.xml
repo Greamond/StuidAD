@@ -7,13 +7,28 @@
     android:padding="16dp"
     android:layout_marginBottom="12dp">
 
-    <!-- Номер задачи -->
-    <TextView
-        android:id="@+id/tvTaskNumber"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:textColor="@color/gray"/>
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <!-- Номер задачи -->
+        <TextView
+            android:id="@+id/tvTaskNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:textSize="14sp"
+            android:textColor="@color/gray"/>
+
+        <View
+            android:id="@+id/drag_handle"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_alignParentRight="true"
+            android:background="@drawable/drag" />
+    </RelativeLayout>
 
     <!-- Название задачи -->
     <TextView
