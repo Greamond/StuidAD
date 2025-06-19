@@ -180,6 +180,7 @@ public class SubtasksFragment extends Fragment {
         view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showAddColumnDialog(null));
 
         // Обновление данных
+        swipeRefresh.setColorSchemeResources(R.color.blue);
         swipeRefresh.setOnRefreshListener(this::refreshData);
         loadInitialData();
 

@@ -167,6 +167,7 @@ public class TasksFragment extends Fragment {
         view.findViewById(R.id.btnAddColumn).setOnClickListener(v -> showEditColumnDialog(null));
 
         // Обновление данных
+        swipeRefresh.setColorSchemeResources(R.color.blue);
         swipeRefresh.setOnRefreshListener(this::refreshData);
         loadInitialData();
 

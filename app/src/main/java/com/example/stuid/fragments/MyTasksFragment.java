@@ -77,6 +77,7 @@ public class MyTasksFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
+        swipeRefresh.setColorSchemeResources(R.color.blue);
         swipeRefresh.setOnRefreshListener(this::refreshData);
 
         progressBar.setVisibility(View.VISIBLE);

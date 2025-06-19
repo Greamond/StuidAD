@@ -115,6 +115,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         });
 
         // Настройка SwipeRefresh
+        swipeRefresh.setColorSchemeResources(R.color.blue);
         swipeRefresh.setOnRefreshListener(this::loadInitialData);
 
         apiClient = new ApiClient();
