@@ -9,7 +9,8 @@
         android:id="@+id/tilTaskName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Название задачи">
+        android:hint="Название задачи"
+        style="@style/AppTheme">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etTaskName"
@@ -21,7 +22,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Описание"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="8dp"
+        style="@style/AppTheme">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etTaskDescription"
@@ -44,7 +46,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        style="@style/AppThemeDrop">
 
         <AutoCompleteTextView
             android:id="@+id/actvAssigneeSearch"

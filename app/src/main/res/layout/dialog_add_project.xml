@@ -9,7 +9,7 @@
         android:id="@+id/tilProjectName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        style="@style/AppTheme">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etProjectName"
@@ -23,7 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        style="@style/AppTheme">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etProjectDescription"
@@ -53,7 +53,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+            style="@style/AppThemeDrop">
 
             <AutoCompleteTextView
                 android:id="@+id/actvEmployeeSearch"

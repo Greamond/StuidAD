@@ -4,7 +4,12 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="AppTheme" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/blue</item>
+        <item name="hintTextColor">@color/blue</item>
+        <item name="cursorColor">@color/blue</item>
+    </style>
+    <style name="AppThemeDrop" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
         <item name="boxStrokeColor">@color/blue</item>
         <item name="hintTextColor">@color/blue</item>
         <item name="cursorColor">@color/blue</item>
