@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:layout_margin="8dp"
-    android:background="@color/design_default_color_background"
+    android:background="@drawable/bg_column"
     android:padding="8dp">
 
     <!-- Заголовок колонки -->

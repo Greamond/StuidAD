@@ -112,15 +112,6 @@ public class EmployeesFragment extends Fragment {
         }
 
         adapter.updateEmployees(filteredList);
-
-        // Показываем сообщение, если ничего не найдено
-        if (filteredList.isEmpty()) {
-            showEmptySearchState();
-        }
-    }
-
-    private void showEmptySearchState() {
-        Toast.makeText(requireContext(), "Сотрудники не найдены", Toast.LENGTH_SHORT).show();
     }
 
     private void loadInitialData() {
