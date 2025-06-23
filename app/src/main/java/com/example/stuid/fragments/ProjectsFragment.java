@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -264,7 +265,11 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         AlertDialog dialog = builder.create();
         dialog.show();
 
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
         Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.blue));
         positiveButton.setOnClickListener(v -> {
             String name = etName.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
@@ -602,6 +607,12 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
 
         AlertDialog dialog = builder.create();
         dialog.show();
+
+        Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+        neutralButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.blue));
     }
 
     private void showEditProjectDialog(Project project) {
@@ -665,7 +676,14 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         AlertDialog dialog = builder.create();
         dialog.show();
 
+        Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+        neutralButton.setTextColor(getResources().getColor(R.color.red));
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
         Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.blue));
         positiveButton.setOnClickListener(v -> {
             String name = etName.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
@@ -823,14 +841,21 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
     }
 
     private void showDeleteConfirmationDialog(int projectId) {
-        new AlertDialog.Builder(getActivity())
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
                 .setTitle("Удаление проекта")
                 .setMessage("Вы уверены, что хотите удалить этот проект?")
                 .setPositiveButton("Удалить", (dialog, which) -> {
                     deleteProject(projectId);
                 })
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.red));
     }
 
     private void deleteProject(int projectId) {
@@ -942,12 +967,19 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         String direction = isArchiveMode
                 ? "из архива"
                 : "в архив";
-        new AlertDialog.Builder(getActivity())
+        AlertDialog.Builder builder = new  AlertDialog.Builder(getActivity())
                 .setTitle("Архивировать проект?")
                 .setMessage("Вы уверены, что хотите переместить этот проект" + direction + "?")
                 .setPositiveButton("Да", (dialog, which) -> archiveProject(project))
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.red));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.blue));
     }
 
     private void archiveProject(Project project) {
