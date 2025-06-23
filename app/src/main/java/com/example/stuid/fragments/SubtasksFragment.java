@@ -450,7 +450,14 @@ public class SubtasksFragment extends Fragment {
         AlertDialog dialog = builder.create();
 
         dialog.setOnShowListener(dialogInterface -> {
+            Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+            negativeButton.setTextColor(getResources().getColor(R.color.red));
+
+            Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+            neutralButton.setTextColor(getResources().getColor(R.color.blue));
+
             Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            positiveButton.setTextColor(getResources().getColor(R.color.blue));
             positiveButton.setOnClickListener(v -> {
                 String name = input.getText().toString().trim();
                 textInputLayout.setError(null); // очищаем предыдущую ошибку
@@ -494,12 +501,19 @@ public class SubtasksFragment extends Fragment {
     }
 
     private void showDeleteColumnConfirmationDialog(SubtaskColumn column) {
-        new AlertDialog.Builder(requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
                 .setTitle("Подтвердите удаление")
                 .setMessage("Вы уверены, что хотите удалить колонку \"" + column.getName() + "\"?")
                 .setPositiveButton("Удалить", (dialog, which) -> deleteSubtaskColumn(column))
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.red));
     }
 
     private void deleteSubtaskColumn(SubtaskColumn column) {
@@ -697,7 +711,11 @@ public class SubtasksFragment extends Fragment {
         AlertDialog dialog = builder.create();
         dialog.show();
 
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
         Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.blue));
         positiveButton.setOnClickListener(v -> {
             String name = etName.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
@@ -962,10 +980,12 @@ public class SubtasksFragment extends Fragment {
 
             // Назначаем обработчики кнопок ПОСЛЕ show()
             Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            positiveButton.setTextColor(getResources().getColor(R.color.blue));
             positiveButton.setOnClickListener(v -> dialog.dismiss());
 
             if (canEditTask && (currentUserId == subtask.getCreatorId() || currentUserId == projectCreatorId)) {
                 Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+                negativeButton.setTextColor(getResources().getColor(R.color.red));
                 if (negativeButton != null) {
                     negativeButton.setOnClickListener(v -> {
                         showDeleteConfirmationDialog(subtask);
@@ -976,6 +996,7 @@ public class SubtasksFragment extends Fragment {
 
             if (canEditTask) {
                 Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+                neutralButton.setTextColor(getResources().getColor(R.color.blue));
                 if (neutralButton != null) {
                     neutralButton.setOnClickListener(v -> {
                         String name = etName.getText().toString().trim();
@@ -1127,14 +1148,21 @@ public class SubtasksFragment extends Fragment {
     }
 
     private void showDeleteConfirmationDialog(Subtask subtask) {
-        new AlertDialog.Builder(requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
                 .setTitle("Подтверждение удаления")
                 .setMessage("Вы уверены, что хотите удалить эту подзадачу?")
                 .setPositiveButton("Удалить", (dialog, which) -> {
                     deleteSubtask(subtask);
                 })
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.red));
     }
 
     private void deleteSubtask(Subtask subtask) {

@@ -416,7 +416,14 @@ public class TasksFragment extends Fragment {
 
         // Назначаем обработчик только после создания диалога
         dialog.setOnShowListener(dialogInterface -> {
+            Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+            negativeButton.setTextColor(getResources().getColor(R.color.red));
+
+            Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+            neutralButton.setTextColor(getResources().getColor(R.color.blue));
+
             Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            positiveButton.setTextColor(getResources().getColor(R.color.blue));
             positiveButton.setOnClickListener(v -> {
                 String name = input.getText().toString().trim();
                 textInputLayout.setError(null); // очищаем ошибку
@@ -445,12 +452,19 @@ public class TasksFragment extends Fragment {
     }
 
     private void showDeleteColumnConfirmationDialog(TaskColumn column) {
-        new AlertDialog.Builder(requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
                 .setTitle("Подтвердите удаление")
                 .setMessage("Вы уверены, что хотите удалить колонку \"" + column.getName() + "\"?")
                 .setPositiveButton("Удалить", (dialog, which) -> deleteColumn(column))
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.red));
     }
 
     private void deleteColumn(TaskColumn column) {
@@ -627,7 +641,11 @@ public class TasksFragment extends Fragment {
         AlertDialog dialog = builder.create();
         dialog.show();
 
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
         Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.blue));
         positiveButton.setOnClickListener(v -> {
             String name = etName.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
@@ -981,8 +999,15 @@ public class TasksFragment extends Fragment {
             AlertDialog dialog = builder.create();
             dialog.show();
 
+            Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+            negativeButton.setTextColor(getResources().getColor(R.color.red));
+
+            Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            positiveButton.setTextColor(getResources().getColor(R.color.blue));
+
             // Переопределяем обработчик положительной кнопки
             Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+            neutralButton.setTextColor(getResources().getColor(R.color.blue));
             neutralButton.setOnClickListener(v -> {
                 String name = etName.getText().toString().trim();
                 String description = etDescription.getText().toString().trim();
@@ -1198,14 +1223,21 @@ public class TasksFragment extends Fragment {
     }
 
     private void showDeleteConfirmationDialog(Task task) {
-        new AlertDialog.Builder(requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
                 .setTitle("Подтверждение удаления")
                 .setMessage("Вы уверены, что хотите удалить эту задачу?")
                 .setPositiveButton("Удалить", (dialog, which) -> {
                     deleteTask(task);
                 })
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.red));
     }
 
     private void deleteTask(Task task) {
