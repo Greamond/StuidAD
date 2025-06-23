@@ -6,6 +6,8 @@ import static android.content.Context.MODE_PRIVATE;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -38,7 +40,9 @@ import com.example.stuid.classes.FileUtil;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -394,6 +398,36 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    private byte[] compressImage(Uri imageUri, int targetWidth, int targetHeight, int quality) {
+        try {
+            InputStream inputStream = requireContext().getContentResolver().openInputStream(imageUri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+
+            if (bitmap == null) {
+                Toast.makeText(requireContext(), "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show();
+                return new byte[0];
+            }
+
+            // Изменяем размер изображения
+            Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+
+            // Сжимаем изображение в JPEG
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream);
+            byte[] compressedImageBytes = outputStream.toByteArray();
+
+            // Освобождаем память
+            if (!bitmap.isRecycled()) bitmap.recycle();
+            if (!resizedBitmap.isRecycled()) resizedBitmap.recycle();
+
+            return compressedImageBytes;
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(requireContext(), "Ошибка сжатия изображения", Toast.LENGTH_SHORT).show();
+            return new byte[0];
+        }
+    }
+
     private void saveImageToStorage(Uri imageUri) {
         if (!CheckInternet.isNetworkConnected(requireActivity())) {
             Toast.makeText(requireActivity(), "Нет подключения к интернету", Toast.LENGTH_SHORT).show();
@@ -401,65 +435,88 @@ public class ProfileFragment extends Fragment {
         }
 
         progressDialog = new ProgressDialog(requireContext());
-        progressDialog.setMessage("Загрузка изображения...");
+        progressDialog.setMessage("Загрузка и сжатие изображения...");
         progressDialog.setCancelable(false);
         progressDialog.show();
 
         new Thread(() -> {
-            try {
-                // 1. Сохраняем изображение локально
-                File storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-                File imageFile = File.createTempFile("profile_", ".jpg", storageDir);
+            // Сжимаем изображение
+            int targetWidth = 300;
+            int targetHeight = 300;
+            int quality = 70;
 
-                InputStream in = requireContext().getContentResolver().openInputStream(imageUri);
-                OutputStream out = new FileOutputStream(imageFile);
-                FileUtil.copy(in, out);
+            byte[] compressedImageBytes = compressImage(imageUri, targetWidth, targetHeight, quality);
 
-                // 2. Конвертируем в Base64 для отправки на сервер
-                byte[] imageData = Files.readAllBytes(imageFile.toPath());
-                String base64Image = Base64.encodeToString(imageData, Base64.DEFAULT);
-
-                // 3. Отправляем на сервер
-                int employeeId = prefs.getInt("employee_id", 0);
-                String token = prefs.getString("jwt_token", "");
-
-                Call call = apiClient.uploadProfilePhoto(employeeId, base64Image, token, new ProfilePhotoCallback() {
-                    @Override
-                    public void onSuccess() {
-                        requireActivity().runOnUiThread(() -> {
-                            // 4. Сохраняем локальный путь только после успешной загрузки на сервер
-                            editor.putString("profile_image", imageFile.getAbsolutePath());
-                            editor.apply();
-
-                            progressDialog.dismiss();
-                            Glide.with(ProfileFragment.this)
-                                    .load(imageFile)
-                                    .circleCrop()
-                                    .into(ivPhoto);
-
-                            Toast.makeText(requireContext(),
-                                    "Фото профиля обновлено", Toast.LENGTH_SHORT).show();
-                        });
-                    }
-
-                    @Override
-                    public void onFailure(String error) {
-                        requireActivity().runOnUiThread(() -> {
-                            progressDialog.dismiss();
-                            Toast.makeText(requireContext(),
-                                    "Ошибка загрузки фото: " + error, Toast.LENGTH_LONG).show();
-                        });
-                    }
-                });
-                callManager.add(call);
-
-            } catch (IOException e) {
-                requireActivity().runOnUiThread(() -> {
-                    progressDialog.dismiss();
-                    Toast.makeText(requireContext(),
-                            "Ошибка обработки изображения", Toast.LENGTH_SHORT).show();
-                });
+            if (compressedImageBytes.length == 0) {
+                Toast.makeText(requireContext(), "Ошибка при сжатии", Toast.LENGTH_SHORT).show();
+                progressDialog.dismiss();
+                return;
             }
+
+            // Конвертируем в Base64, если нужно отправлять как строку
+            String base64Image = Base64.encodeToString(compressedImageBytes, Base64.DEFAULT);
+
+            // Отправляем на сервер
+            int employeeId = prefs.getInt("employee_id", 0);
+            String token = prefs.getString("jwt_token", "");
+
+            Call call = apiClient.uploadProfilePhoto(employeeId, base64Image, token, new ProfilePhotoCallback() {
+                @Override
+                public void onSuccess() {
+                    requireActivity().runOnUiThread(() -> {
+                        // Сохраняем локальный путь к оригиналу (необязательно)
+                        File storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                        File imageFile = null;
+                        try {
+                            imageFile = File.createTempFile("profile_", ".jpg", storageDir);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        FileOutputStream fos = null;
+                        try {
+                            fos = new FileOutputStream(imageFile);
+                        } catch (FileNotFoundException e) {
+                            throw new RuntimeException(e);
+                        }
+                        try {
+                            fos.write(compressedImageBytes);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        try {
+                            fos.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+
+                        editor.putString("profile_image", imageFile.getAbsolutePath());
+                        editor.apply();
+
+                        // Обновляем UI
+                        Glide.with(ProfileFragment.this)
+                                .load(imageFile)
+                                .circleCrop()
+                                .into(ivPhoto);
+
+                        progressDialog.dismiss();
+                        Toast.makeText(requireContext(),
+                                "Фото профиля обновлено",
+                                Toast.LENGTH_SHORT).show();
+                    });
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    requireActivity().runOnUiThread(() -> {
+                        progressDialog.dismiss();
+                        Toast.makeText(requireContext(),
+                                "Ошибка загрузки фото: слишком большое",
+                                Toast.LENGTH_LONG).show();
+                    });
+                }
+            });
+
+            callManager.add(call);
         }).start();
     }
 }
