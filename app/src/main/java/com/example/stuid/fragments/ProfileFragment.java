@@ -104,12 +104,19 @@ public class ProfileFragment extends Fragment {
     }
 
     private void showLogoutConfirmationDialog() {
-        new AlertDialog.Builder(requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
                 .setTitle("Выход из аккаунта")
                 .setMessage("Вы уверены, что хотите выйти?")
                 .setPositiveButton("Выйти", (dialog, which) -> logoutUser())
-                .setNegativeButton("Отмена", null)
-                .show();
+                .setNegativeButton("Отмена", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        negativeButton.setTextColor(getResources().getColor(R.color.blue));
+
+        Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        positiveButton.setTextColor(getResources().getColor(R.color.red));
     }
 
     private void logoutUser() {

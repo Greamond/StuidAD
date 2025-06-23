@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -210,6 +211,11 @@ public class SignInActivity extends AppCompatActivity {
         textInputLayout.setLayoutParams(inputLayoutParams);
         textInputLayout.setHint("Введите ваш email");
         textInputLayout.setErrorEnabled(true);
+        textInputLayout.setBoxStrokeColor(ContextCompat.getColor(this, R.color.blue));
+        textInputLayout.setHintTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            textInputLayout.setCursorColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        }
 
         // Создаем EditText
         final TextInputEditText editText = new TextInputEditText(textInputLayout.getContext());
@@ -233,7 +239,11 @@ public class SignInActivity extends AppCompatActivity {
 
         // Переопределяем обработчик для кнопки "Отправить"
         dialog.setOnShowListener(dialogInterface -> {
+            Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+            negativeButton.setTextColor(getResources().getColor(R.color.red));
+
             Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positiveButton.setTextColor(getResources().getColor(R.color.blue));
             positiveButton.setOnClickListener(view -> {
                 String email = editText.getText().toString().trim();
 
@@ -250,18 +260,6 @@ public class SignInActivity extends AppCompatActivity {
                 // Если все проверки пройдены
                 textInputLayout.setError(null);
                 sendPasswordResetEmail(email);
-
-                // Блокируем кнопку на основном экране
-                tvForgotPassword.setEnabled(false);
-                new CountDownTimer(60000, 1000) {
-                    public void onTick(long millisUntilFinished) {
-                        tvForgotPassword.setText("Повторить через " + millisUntilFinished / 1000);
-                    }
-                    public void onFinish() {
-                        tvForgotPassword.setEnabled(true);
-                        tvForgotPassword.setText("Забыли пароль?");
-                    }
-                }.start();
 
                 dialog.dismiss();
             });
@@ -289,7 +287,6 @@ public class SignInActivity extends AppCompatActivity {
     }
 
     private void sendPasswordResetEmail(String email) {
-        // Показываем прогресс
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Отправка запроса...");
         progressDialog.show();
@@ -304,13 +301,17 @@ public class SignInActivity extends AppCompatActivity {
 
         apiClient.sendPasswordResetEmail(email, code, new AuthPasswordResetCallback() {
             @Override
-            public void onSuccess(String message,JSONObject data) {
+            public void onSuccess(String message, JSONObject data) {
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
                     Toast.makeText(SignInActivity.this,
                             "Код подтверждения отправлен на " + email,
                             Toast.LENGTH_LONG).show();
 
+                    tvForgotPassword.setEnabled(false); // Блокируем на 2 минуты
+                    tvForgotPassword.setText("Повторить через 02:00");
+
+                    startResendCountdown(); // Запускаем обратный отсчёт
                     showVerificationCodeDialog(email, code);
                 });
             }
@@ -327,12 +328,27 @@ public class SignInActivity extends AppCompatActivity {
         });
     }
 
+    private void startResendCountdown() {
+        new CountDownTimer(120000, 1000) {
+            public void onTick(long millisUntilFinished) {
+                int seconds = (int) (millisUntilFinished / 1000);
+                int minutes = seconds / 60;
+                int remainingSeconds = seconds % 60;
+                tvForgotPassword.setText(String.format("Повторить через %02d:%02d", minutes, remainingSeconds));
+            }
+
+            public void onFinish() {
+                tvForgotPassword.setEnabled(true);
+                tvForgotPassword.setText("Забыли пароль?");
+            }
+        }.start();
+    }
+
     private void showVerificationCodeDialog(String email, int code) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Подтверждение кода");
         builder.setMessage("Введите код, отправленный на " + email);
 
-        // Создаем контейнер
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setLayoutParams(new ViewGroup.LayoutParams(
@@ -340,7 +356,6 @@ public class SignInActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
-        // Настраиваем отступы
         int padding = (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 16,
@@ -348,17 +363,20 @@ public class SignInActivity extends AppCompatActivity {
         );
         container.setPadding(padding, 0, padding, 0);
 
-        // Создаем TextInputLayout
-        final TextInputLayout codeInputLayout = new TextInputLayout(this);
+        TextInputLayout codeInputLayout = new TextInputLayout(this);
         codeInputLayout.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         ));
         codeInputLayout.setHint("6-значный код");
         codeInputLayout.setErrorEnabled(true);
+        codeInputLayout.setBoxStrokeColor(ContextCompat.getColor(this, R.color.blue));
+        codeInputLayout.setHintTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            codeInputLayout.setCursorColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        }
 
-        // Создаем EditText для ввода кода
-        final TextInputEditText codeInput = new TextInputEditText(codeInputLayout.getContext());
+        TextInputEditText codeInput = new TextInputEditText(codeInputLayout.getContext());
         codeInput.setInputType(InputType.TYPE_CLASS_NUMBER);
         codeInput.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -366,72 +384,80 @@ public class SignInActivity extends AppCompatActivity {
         ));
         codeInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
         codeInputLayout.addView(codeInput);
-
         container.addView(codeInputLayout);
+
+        // TextView для отображения времени
+        TextView tvTimer = new TextView(this);
+        tvTimer.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        tvTimer.setGravity(View.TEXT_ALIGNMENT_CENTER);
+        tvTimer.setTextSize(14);
+        tvTimer.setTextColor(ContextCompat.getColor(this, R.color.gray));
+        tvTimer.setText("Осталось времени: 02:00");
+        container.addView(tvTimer);
+
         builder.setView(container);
 
-        // Устанавливаем кнопки (но пока с пустыми обработчиками)
         builder.setPositiveButton("Подтвердить", null);
-        builder.setNegativeButton("Отмена", null);
+        builder.setNegativeButton("Отмена", (dialogEmail, which) -> dialogEmail.dismiss());
 
-        // Создаем диалог
-        final AlertDialog dialog = builder.create();
+        AlertDialog dialog = builder.create();
 
-        // Переопределяем обработчики кнопок после создания диалога
-        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
-            @Override
-            public void onShow(DialogInterface dialogInterface) {
-                Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        dialog.setOnShowListener(dialogInterface -> {
+            Button negtiveButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+            negtiveButton.setTextColor(getResources().getColor(R.color.red));
 
-                // Обработчик для кнопки "Подтвердить"
-                positiveButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        String enteredCode = codeInput.getText().toString().trim();
+            Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positiveButton.setTextColor(getResources().getColor(R.color.blue));
+            positiveButton.setOnClickListener(view -> {
+                String enteredCode = codeInput.getText().toString().trim();
+                if (enteredCode.isEmpty()) {
+                    codeInputLayout.setError("Введите код подтверждения");
+                    return;
+                }
+                if (!enteredCode.equals(String.valueOf(code))) {
+                    codeInputLayout.setError("Неверный код");
+                    return;
+                }
 
-                        if (enteredCode.isEmpty()) {
-                            codeInputLayout.setError("Введите код подтверждения");
-                            return;
-                        }
-
-                        if (!enteredCode.equals(String.valueOf(code))) {
-                            codeInputLayout.setError("Неверный код подтверждения");
-                            return;
-                        }
-
-                        // Если код верный
-                        codeInputLayout.setError(null);
-                        showNewPasswordDialog(email);
-                        dialog.dismiss();
-                    }
-                });
-
-                // Обработчик для кнопки "Отмена"
-                negativeButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        dialog.dismiss();
-                    }
-                });
-            }
-        });
-
-        // Сбрасываем ошибку при изменении текста
-        codeInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
                 codeInputLayout.setError(null);
+                showNewPasswordDialog(email);
+                dialog.dismiss();
+            });
+        });
+
+        // Запуск таймера
+        CountDownTimer timer = new CountDownTimer(120000, 1000) { // 2 минуты
+            public void onTick(long millisUntilFinished) {
+                int seconds = (int) (millisUntilFinished / 1000);
+                int minutes = seconds / 60;
+                int remainingSeconds = seconds % 60;
+
+                String timeLeft = String.format("Осталось времени: %02d:%02d", minutes, remainingSeconds);
+                tvTimer.setText(timeLeft);
             }
 
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
+            public void onFinish() {
+                tvTimer.setText("Время истекло. Код недействителен.");
+                Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                positiveButton.setEnabled(false);
+                positiveButton.setText("Код просрочен");
+
+                // Разрешаем повторную отправку кода
+                tvForgotPassword.setEnabled(true);
+                tvForgotPassword.setText("Повторить отправку");
+            }
+        };
+
+        // Привязываем таймер к диалогу
+        dialog.setOnCancelListener(dialogInterface -> timer.cancel());
 
         dialog.show();
+
+        // Включаем таймер
+        timer.start();
     }
 
     private void showNewPasswordDialog(String email) {
@@ -462,9 +488,14 @@ public class SignInActivity extends AppCompatActivity {
         ));
         newPasswordLayout.setHint("Новый пароль");
         newPasswordLayout.setErrorEnabled(true);
+        newPasswordLayout.setBoxStrokeColor(ContextCompat.getColor(this, R.color.blue));
+        newPasswordLayout.setHintTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            newPasswordLayout.setCursorColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        }
 
         final TextInputEditText newPasswordInput = new TextInputEditText(newPasswordLayout.getContext());
-        newPasswordInput.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        newPasswordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         newPasswordInput.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -479,9 +510,14 @@ public class SignInActivity extends AppCompatActivity {
         ));
         confirmPasswordLayout.setHint("Подтвердите пароль");
         confirmPasswordLayout.setErrorEnabled(true);
+        confirmPasswordLayout.setBoxStrokeColor(ContextCompat.getColor(this, R.color.blue));
+        confirmPasswordLayout.setHintTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            confirmPasswordLayout.setCursorColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.blue)));
+        }
 
         final TextInputEditText confirmPasswordInput = new TextInputEditText(confirmPasswordLayout.getContext());
-        confirmPasswordInput.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        confirmPasswordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         confirmPasswordInput.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -503,7 +539,11 @@ public class SignInActivity extends AppCompatActivity {
         dialog.setOnShowListener(new DialogInterface.OnShowListener() {
             @Override
             public void onShow(DialogInterface dialogInterface) {
+                Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+                negativeButton.setTextColor(getResources().getColor(R.color.red));
+
                 Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                positiveButton.setTextColor(getResources().getColor(R.color.blue));
                 positiveButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
