@@ -3,10 +3,28 @@
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
-    android:viewportHeight="26">
+    android:viewportHeight="24">
 
-    <!-- 3 horizontal lines (typical drag handle icon) -->
+    <!-- 6 dots in 2 columns (3 rows) -->
+    <!-- Left column -->
     <path
-        android:fillColor="#424242"
-        android:pathData="M4,8h16v2H4z M4,12h16v2H4z M4,16h16v2H4z" />
+        android:fillColor="@color/blue"
+        android:pathData="M8,6 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" /> <!-- Top left -->
+    <path
+        android:fillColor="@color/blue"
+        android:pathData="M8,12 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" /> <!-- Middle left -->
+    <path
+        android:fillColor="@color/blue"
+        android:pathData="M8,18 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" /> <!-- Bottom left -->
+
+    <!-- Right column -->
+    <path
+        android:fillColor="@color/blue"
+        android:pathData="M16,6 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" /> <!-- Top right -->
+    <path
+        android:fillColor="@color/blue"
+        android:pathData="M16,12 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" /> <!-- Middle right -->
+    <path
+        android:fillColor="@color/blue"
+        android:pathData="M16,18 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" /> <!-- Bottom right -->
 </vector>

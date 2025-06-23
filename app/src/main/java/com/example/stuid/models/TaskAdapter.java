@@ -4,16 +4,12 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipDescription;
-import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.navigation.Navigation;
@@ -116,7 +112,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             }
         });
 
-        holder.itemView.findViewById(R.id.drag_handle).setOnLongClickListener(v -> {
+        holder.itemView.findViewById(R.id.dragHandle).setOnLongClickListener(v -> {
             TasksFragment.setDraggedTask(task);
 
             ClipData.Item item = new ClipData.Item((CharSequence) null);

@@ -3,6 +3,7 @@ package com.example.stuid.models;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -47,6 +48,8 @@ public class MyTaskAdapter extends RecyclerView.Adapter<MyTaskAdapter.ViewHolder
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvTaskNumber, tvTaskName, tvCreatorOrAssignee, tvSubtasks;
+        View dragHandle;
+        RelativeLayout rlNumDrag;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -54,6 +57,8 @@ public class MyTaskAdapter extends RecyclerView.Adapter<MyTaskAdapter.ViewHolder
             tvTaskName = itemView.findViewById(R.id.tvTaskName);
             tvCreatorOrAssignee = itemView.findViewById(R.id.tvTaskCreator);
             tvSubtasks = itemView.findViewById(R.id.tvSubtasks);
+            dragHandle = itemView.findViewById(R.id.dragHandle);
+            dragHandle.setVisibility(View.GONE);
         }
     }
 
