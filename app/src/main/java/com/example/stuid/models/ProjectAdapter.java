@@ -77,7 +77,10 @@ public class ProjectAdapter extends RecyclerView.Adapter<ProjectAdapter.ViewHold
                 (project.getCreator() == currentUserId ? "Вы" : creatorName));
 
         holder.tvArchive.setText(project.isArchive() ? "Из архива" : "В архив");
-        if (project.getCreator() != currentUserId) holder.tvArchive.setVisibility(View.GONE);
+        if (project.getCreator() != currentUserId)
+            holder.tvArchive.setVisibility(View.GONE);
+        else
+            holder.tvArchive.setVisibility(View.VISIBLE);
 
         holder.tvArchive.setOnClickListener(v -> {
             if (listener != null) {

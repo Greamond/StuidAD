@@ -296,7 +296,8 @@ public class ApiClient {
                                 json.getString("Name"),
                                 json.getString("Description"),
                                 json.getBoolean("IsPublic"),
-                                json.getInt("Creator")
+                                json.getInt("Creator"),
+                                json.getBoolean("IsArchive")
                         );
 
                         callback.onSuccess(createdProject);

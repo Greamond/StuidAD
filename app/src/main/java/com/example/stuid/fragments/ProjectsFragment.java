@@ -97,6 +97,12 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
         btnAdd.setOnClickListener(v -> {showAddProjectDialog();});
 
         ImageButton btnArchive = view.findViewById(R.id.btnArchive);
+        btnArchive.setImageResource(isArchiveMode
+                ? R.drawable.ic_close
+                : R.drawable.ic_archive);
+        tvTitle.setText(isArchiveMode
+                ? "Архив"
+                : "Проекты");
         btnArchive.setOnClickListener(v -> {
             isArchiveMode = !isArchiveMode;
 
@@ -474,7 +480,7 @@ public class ProjectsFragment extends Fragment implements ProjectAdapter.OnTaskB
             return;
         }
 
-        Project newProject = new Project(0, name, description, isPublic, 0);
+        Project newProject = new Project(0, name, description, isPublic, 0, false);
         progressBar.setVisibility(View.VISIBLE);
 
         if (!CheckInternet.isNetworkConnected(requireActivity())) {
